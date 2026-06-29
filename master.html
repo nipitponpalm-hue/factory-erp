@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — Master Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">Master Data</div>
+
+  <!-- TABS -->
+  <div style="display:flex;gap:4px;background:#EDE9DD;border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content;">
+    <button class="tab-btn active" data-tab="suppliers">Supplier</button>
+    <button class="tab-btn" data-tab="customers">Customer</button>
+    <button class="tab-btn" data-tab="materials">วัตถุดิบ</button>
+    <button class="tab-btn" data-tab="products">สินค้าสำเร็จรูป</button>
+    <button class="tab-btn" data-tab="operators">ผู้ปฏิบัติงาน</button>
+  </div>
+
+  <!-- SUPPLIERS -->
+  <div id="tab-suppliers">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข Supplier</div>
+      <input type="hidden" id="sup-id">
+      <div class="row">
+        <div class="field"><label>รหัส Supplier *</label><input type="text" id="sup-code" placeholder="SUP001"></div>
+        <div class="field-lg"><label>ชื่อ Supplier *</label><input type="text" id="sup-name" placeholder="บริษัท..."></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field"><label>ชื่อผู้ติดต่อ</label><input type="text" id="sup-contact"></div>
+        <div class="field"><label>เบอร์โทร</label><input type="text" id="sup-phone"></div>
+        <div class="field-lg"><label>ที่อยู่</label><input type="text" id="sup-address"></div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="sup-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="sup-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายชื่อ Supplier</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ผู้ติดต่อ</th><th>เบอร์โทร</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="sup-body"></tbody></table>
+      </div>
+      <div id="sup-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div id="tab-customers" style="display:none;">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข Customer</div>
+      <input type="hidden" id="cus-id">
+      <div class="row">
+        <div class="field"><label>รหัส Customer *</label><input type="text" id="cus-code" placeholder="CUS001"></div>
+        <div class="field-lg"><label>ชื่อ Customer *</label><input type="text" id="cus-name" placeholder="บริษัท..."></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field"><label>ชื่อผู้ติดต่อ</label><input type="text" id="cus-contact"></div>
+        <div class="field"><label>เบอร์โทร</label><input type="text" id="cus-phone"></div>
+        <div class="field-lg"><label>ที่อยู่</label><input type="text" id="cus-address"></div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="cus-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="cus-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายชื่อ Customer</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ผู้ติดต่อ</th><th>เบอร์โทร</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="cus-body"></tbody></table>
+      </div>
+      <div id="cus-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- MATERIALS -->
+  <div id="tab-materials" style="display:none;">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข วัตถุดิบ</div>
+      <input type="hidden" id="mat-id">
+      <div class="row">
+        <div class="field"><label>SKU *</label><input type="text" id="mat-sku" placeholder="RM-VEG-001"></div>
+        <div class="field-lg"><label>ชื่อวัตถุดิบ *</label><input type="text" id="mat-name" placeholder="ผักกาดขาว"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>หมวดหมู่ *</label>
+          <select id="mat-category">
+            <option value="">-- เลือก --</option>
+            <option value="veg">ผัก/ผลไม้</option>
+            <option value="fresh">อาหารสด</option>
+            <option value="dry">ของแห้ง</option>
+            <option value="spice">เครื่องปรุง</option>
+            <option value="drink">เครื่องดื่ม</option>
+            <option value="pack">บรรจุภัณฑ์</option>
+            <option value="other">อื่นๆ</option>
+          </select>
+        </div>
+        <div class="field"><label>หน่วย *</label><input type="text" id="mat-unit" placeholder="กก., ลิตร, ชิ้น"></div>
+        <div class="field"><label>Min Stock</label><input type="number" id="mat-min" placeholder="0" min="0" step="0.01"></div>
+        <div class="field"><label>อายุการเก็บ (วัน)</label><input type="number" id="mat-shelf" placeholder="0" min="0"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field-lg"><label>เงื่อนไขการเก็บรักษา</label><input type="text" id="mat-storage" placeholder="เก็บที่อุณหภูมิ 2-8°C"></div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="mat-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="mat-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายการวัตถุดิบ</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>SKU</th><th>ชื่อ</th><th>หมวดหมู่</th><th>หน่วย</th><th style="text-align:right;">Min Stock</th><th>อายุ (วัน)</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="mat-body"></tbody></table>
+      </div>
+      <div id="mat-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div id="tab-products" style="display:none;">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข สินค้าสำเร็จรูป</div>
+      <input type="hidden" id="prd-id">
+      <div class="row">
+        <div class="field"><label>SKU *</label><input type="text" id="prd-sku" placeholder="FG-001"></div>
+        <div class="field-lg"><label>ชื่อสินค้า *</label><input type="text" id="prd-name" placeholder="ผักกาดดอง 500g"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>หมวดหมู่ *</label>
+          <select id="prd-category">
+            <option value="">-- เลือก --</option>
+            <option value="processed">อาหารแปรรูป</option>
+            <option value="frozen">แช่แข็ง</option>
+            <option value="fresh">สด</option>
+            <option value="dry">แห้ง</option>
+            <option value="other">อื่นๆ</option>
+          </select>
+        </div>
+        <div class="field"><label>หน่วย *</label><input type="text" id="prd-unit" placeholder="กก., ถุง, กล่อง"></div>
+        <div class="field"><label>อายุการเก็บ (วัน)</label><input type="number" id="prd-shelf" placeholder="0" min="0"></div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="prd-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="prd-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายการสินค้าสำเร็จรูป</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>SKU</th><th>ชื่อ</th><th>หมวดหมู่</th><th>หน่วย</th><th>อายุ (วัน)</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="prd-body"></tbody></table>
+      </div>
+      <div id="prd-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- OPERATORS -->
+  <div id="tab-operators" style="display:none;">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข ผู้ปฏิบัติงาน</div>
+      <input type="hidden" id="opr-id">
+      <div class="row">
+        <div class="field-lg"><label>ชื่อ *</label><input type="text" id="opr-name" placeholder="คุณสมชาย"></div>
+        <div class="field">
+          <label>แผนก</label>
+          <select id="opr-dept">
+            <option value="">-- เลือก --</option>
+            <option value="receive">รับสินค้า</option>
+            <option value="warehouse">คลังสินค้า</option>
+            <option value="production">ผลิต</option>
+            <option value="qc">QC</option>
+            <option value="sales">ขาย</option>
+          </select>
+        </div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="opr-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="opr-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายชื่อผู้ปฏิบัติงาน</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>ชื่อ</th><th>แผนก</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="opr-body"></tbody></table>
+      </div>
+      <div id="opr-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<style>
+.tab-btn {
+  border: none; background: transparent; padding: 8px 16px; border-radius: 8px;
+  font-family: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--ink-soft); cursor: pointer; transition: .15s;
+}
+.tab-btn.active { background: var(--surface); color: var(--green-deep); box-shadow: var(--shadow); }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script>
+(function(){
+
+const DEPT_LABEL = { receive:'รับสินค้า', warehouse:'คลังสินค้า', production:'ผลิต', qc:'QC', sales:'ขาย' };
+const CAT_LABEL  = { veg:'ผัก/ผลไม้', fresh:'อาหารสด', dry:'ของแห้ง', spice:'เครื่องปรุง', drink:'เครื่องดื่ม', pack:'บรรจุภัณฑ์', other:'อื่นๆ', processed:'อาหารแปรรูป', frozen:'แช่แข็ง' };
+
+// ===== TABS =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['suppliers','customers','materials','products','operators'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t === btn.dataset.tab ? '' : 'none';
+    });
+  });
+});
+
+// ===== GENERIC CRUD HELPERS =====
+function statusBadge(active) {
+  return active
+    ? '<span class="status-badge s-available">ใช้งาน</span>'
+    : '<span class="status-badge s-depleted">ปิดใช้</span>';
+}
+
+function toggleActive(table, id, current) {
+  return db.from(table).update({ is_active: !current }).eq('id', id);
+}
+
+// ===== SUPPLIERS =====
+let suppliers = [];
+async function loadSuppliers() {
+  const { data } = await db.from('suppliers').select('*').order('code');
+  suppliers = data || [];
+  renderSuppliers();
+}
+function renderSuppliers() {
+  const body = document.getElementById('sup-body');
+  const empty = document.getElementById('sup-empty');
+  if (!suppliers.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = suppliers.map(s => `<tr>
+    <td><code>${s.code}</code></td>
+    <td>${s.name}</td>
+    <td>${s.contact||'-'}</td>
+    <td>${s.phone||'-'}</td>
+    <td>${statusBadge(s.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editSupplier('${s.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleSupplier('${s.id}',${s.is_active})">${s.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+function editSupplier(id) {
+  const s = suppliers.find(x => x.id === id);
+  document.getElementById('sup-id').value      = s.id;
+  document.getElementById('sup-code').value    = s.code;
+  document.getElementById('sup-name').value    = s.name;
+  document.getElementById('sup-contact').value = s.contact||'';
+  document.getElementById('sup-phone').value   = s.phone||'';
+  document.getElementById('sup-address').value = s.address||'';
+  window.scrollTo(0,0);
+}
+async function toggleSupplier(id, cur) {
+  await toggleActive('suppliers', id, cur);
+  await loadSuppliers();
+}
+document.getElementById('sup-clear').addEventListener('click', () => {
+  ['sup-id','sup-code','sup-name','sup-contact','sup-phone','sup-address'].forEach(id => document.getElementById(id).value = '');
+});
+document.getElementById('sup-save').addEventListener('click', async () => {
+  const id   = document.getElementById('sup-id').value;
+  const code = document.getElementById('sup-code').value.trim();
+  const name = document.getElementById('sup-name').value.trim();
+  if (!code || !name) { showToast('กรุณากรอกรหัสและชื่อ Supplier', 'error'); return; }
+  const payload = { code, name,
+    contact: document.getElementById('sup-contact').value.trim()||null,
+    phone:   document.getElementById('sup-phone').value.trim()||null,
+    address: document.getElementById('sup-address').value.trim()||null,
+  };
+  const { error } = id
+    ? await db.from('suppliers').update(payload).eq('id', id)
+    : await db.from('suppliers').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('sup-clear').click();
+  await loadSuppliers();
+});
+
+// ===== CUSTOMERS =====
+let customers = [];
+async function loadCustomers() {
+  const { data } = await db.from('customers').select('*').order('code');
+  customers = data || [];
+  renderCustomers();
+}
+function renderCustomers() {
+  const body = document.getElementById('cus-body');
+  const empty = document.getElementById('cus-empty');
+  if (!customers.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = customers.map(c => `<tr>
+    <td><code>${c.code}</code></td>
+    <td>${c.name}</td>
+    <td>${c.contact||'-'}</td>
+    <td>${c.phone||'-'}</td>
+    <td>${statusBadge(c.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editCustomer('${c.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleCustomer('${c.id}',${c.is_active})">${c.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+function editCustomer(id) {
+  const c = customers.find(x => x.id === id);
+  document.getElementById('cus-id').value      = c.id;
+  document.getElementById('cus-code').value    = c.code;
+  document.getElementById('cus-name').value    = c.name;
+  document.getElementById('cus-contact').value = c.contact||'';
+  document.getElementById('cus-phone').value   = c.phone||'';
+  document.getElementById('cus-address').value = c.address||'';
+  window.scrollTo(0,0);
+}
+async function toggleCustomer(id, cur) { await toggleActive('customers', id, cur); await loadCustomers(); }
+document.getElementById('cus-clear').addEventListener('click', () => {
+  ['cus-id','cus-code','cus-name','cus-contact','cus-phone','cus-address'].forEach(id => document.getElementById(id).value = '');
+});
+document.getElementById('cus-save').addEventListener('click', async () => {
+  const id   = document.getElementById('cus-id').value;
+  const code = document.getElementById('cus-code').value.trim();
+  const name = document.getElementById('cus-name').value.trim();
+  if (!code || !name) { showToast('กรุณากรอกรหัสและชื่อ Customer', 'error'); return; }
+  const payload = { code, name,
+    contact: document.getElementById('cus-contact').value.trim()||null,
+    phone:   document.getElementById('cus-phone').value.trim()||null,
+    address: document.getElementById('cus-address').value.trim()||null,
+  };
+  const { error } = id
+    ? await db.from('customers').update(payload).eq('id', id)
+    : await db.from('customers').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('cus-clear').click();
+  await loadCustomers();
+});
+
+// ===== MATERIALS =====
+let materials = [];
+async function loadMaterials() {
+  const { data } = await db.from('materials').select('*').order('sku');
+  materials = data || [];
+  renderMaterials();
+}
+function renderMaterials() {
+  const body = document.getElementById('mat-body');
+  const empty = document.getElementById('mat-empty');
+  if (!materials.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = materials.map(m => `<tr>
+    <td><code>${m.sku}</code></td>
+    <td>${m.name}</td>
+    <td>${CAT_LABEL[m.category]||m.category}</td>
+    <td>${m.unit}</td>
+    <td style="text-align:right;">${fmtQty(m.min_stock)}</td>
+    <td>${m.shelf_life_days||'-'}</td>
+    <td>${statusBadge(m.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editMaterial('${m.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleMaterial('${m.id}',${m.is_active})">${m.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+function editMaterial(id) {
+  const m = materials.find(x => x.id === id);
+  document.getElementById('mat-id').value       = m.id;
+  document.getElementById('mat-sku').value      = m.sku;
+  document.getElementById('mat-name').value     = m.name;
+  document.getElementById('mat-category').value = m.category;
+  document.getElementById('mat-unit').value     = m.unit;
+  document.getElementById('mat-min').value      = m.min_stock||0;
+  document.getElementById('mat-shelf').value    = m.shelf_life_days||'';
+  document.getElementById('mat-storage').value  = m.storage_note||'';
+  window.scrollTo(0,0);
+}
+async function toggleMaterial(id, cur) { await toggleActive('materials', id, cur); await loadMaterials(); }
+document.getElementById('mat-clear').addEventListener('click', () => {
+  ['mat-id','mat-sku','mat-name','mat-unit','mat-min','mat-shelf','mat-storage'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mat-category').value = '';
+});
+document.getElementById('mat-save').addEventListener('click', async () => {
+  const id       = document.getElementById('mat-id').value;
+  const sku      = document.getElementById('mat-sku').value.trim();
+  const name     = document.getElementById('mat-name').value.trim();
+  const category = document.getElementById('mat-category').value;
+  const unit     = document.getElementById('mat-unit').value.trim();
+  if (!sku || !name || !category || !unit) { showToast('กรุณากรอกข้อมูลที่จำเป็น (*)', 'error'); return; }
+  const payload = { sku, name, category, unit,
+    min_stock:       parseFloat(document.getElementById('mat-min').value)||0,
+    shelf_life_days: parseInt(document.getElementById('mat-shelf').value)||null,
+    storage_note:    document.getElementById('mat-storage').value.trim()||null,
+  };
+  const { error } = id
+    ? await db.from('materials').update(payload).eq('id', id)
+    : await db.from('materials').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('mat-clear').click();
+  await loadMaterials();
+});
+
+// ===== PRODUCTS =====
+let products = [];
+async function loadProducts() {
+  const { data } = await db.from('products').select('*').order('sku');
+  products = data || [];
+  renderProducts();
+}
+function renderProducts() {
+  const body = document.getElementById('prd-body');
+  const empty = document.getElementById('prd-empty');
+  if (!products.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = products.map(p => `<tr>
+    <td><code>${p.sku}</code></td>
+    <td>${p.name}</td>
+    <td>${CAT_LABEL[p.category]||p.category}</td>
+    <td>${p.unit}</td>
+    <td>${p.shelf_life_days||'-'}</td>
+    <td>${statusBadge(p.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleProduct('${p.id}',${p.is_active})">${p.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+function editProduct(id) {
+  const p = products.find(x => x.id === id);
+  document.getElementById('prd-id').value       = p.id;
+  document.getElementById('prd-sku').value      = p.sku;
+  document.getElementById('prd-name').value     = p.name;
+  document.getElementById('prd-category').value = p.category;
+  document.getElementById('prd-unit').value     = p.unit;
+  document.getElementById('prd-shelf').value    = p.shelf_life_days||'';
+  window.scrollTo(0,0);
+}
+async function toggleProduct(id, cur) { await toggleActive('products', id, cur); await loadProducts(); }
+document.getElementById('prd-clear').addEventListener('click', () => {
+  ['prd-id','prd-sku','prd-name','prd-unit','prd-shelf'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('prd-category').value = '';
+});
+document.getElementById('prd-save').addEventListener('click', async () => {
+  const id       = document.getElementById('prd-id').value;
+  const sku      = document.getElementById('prd-sku').value.trim();
+  const name     = document.getElementById('prd-name').value.trim();
+  const category = document.getElementById('prd-category').value;
+  const unit     = document.getElementById('prd-unit').value.trim();
+  if (!sku || !name || !category || !unit) { showToast('กรุณากรอกข้อมูลที่จำเป็น (*)', 'error'); return; }
+  const payload = { sku, name, category, unit,
+    shelf_life_days: parseInt(document.getElementById('prd-shelf').value)||null,
+  };
+  const { error } = id
+    ? await db.from('products').update(payload).eq('id', id)
+    : await db.from('products').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('prd-clear').click();
+  await loadProducts();
+});
+
+// ===== OPERATORS =====
+let operators = [];
+async function loadOperators() {
+  const { data } = await db.from('operators').select('*').order('name');
+  operators = data || [];
+  renderOperators();
+}
+function renderOperators() {
+  const body = document.getElementById('opr-body');
+  const empty = document.getElementById('opr-empty');
+  if (!operators.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = operators.map(o => `<tr>
+    <td>${o.name}</td>
+    <td>${DEPT_LABEL[o.department]||o.department||'-'}</td>
+    <td>${statusBadge(o.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editOperator('${o.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleOperator('${o.id}',${o.is_active})">${o.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+function editOperator(id) {
+  const o = operators.find(x => x.id === id);
+  document.getElementById('opr-id').value   = o.id;
+  document.getElementById('opr-name').value = o.name;
+  document.getElementById('opr-dept').value = o.department||'';
+  window.scrollTo(0,0);
+}
+async function toggleOperator(id, cur) { await toggleActive('operators', id, cur); await loadOperators(); }
+document.getElementById('opr-clear').addEventListener('click', () => {
+  ['opr-id','opr-name'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('opr-dept').value = '';
+});
+document.getElementById('opr-save').addEventListener('click', async () => {
+  const id   = document.getElementById('opr-id').value;
+  const name = document.getElementById('opr-name').value.trim();
+  if (!name) { showToast('กรุณากรอกชื่อผู้ปฏิบัติงาน', 'error'); return; }
+  const payload = { name, department: document.getElementById('opr-dept').value||null };
+  const { error } = id
+    ? await db.from('operators').update(payload).eq('id', id)
+    : await db.from('operators').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('opr-clear').click();
+  await loadOperators();
+});
+
+// expose for inline onclick
+window.editSupplier   = editSupplier;
+window.toggleSupplier = toggleSupplier;
+window.editCustomer   = editCustomer;
+window.toggleCustomer = toggleCustomer;
+window.editMaterial   = editMaterial;
+window.toggleMaterial = toggleMaterial;
+window.editProduct    = editProduct;
+window.toggleProduct  = toggleProduct;
+window.editOperator   = editOperator;
+window.toggleOperator = toggleOperator;
+
+// ===== INIT =====
+(async function init() {
+  showLoading(true);
+  await Promise.all([loadSuppliers(), loadCustomers(), loadMaterials(), loadProducts(), loadOperators()]);
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>
