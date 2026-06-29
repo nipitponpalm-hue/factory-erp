@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — รายงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+    รายงาน (Reports)
+  </div>
+
+  <!-- DATE FILTER -->
+  <div class="card">
+    <div class="row" style="align-items:flex-end;">
+      <div class="field">
+        <label>วันที่เริ่ม</label>
+        <input type="date" id="dateFrom">
+      </div>
+      <div class="field">
+        <label>วันที่สิ้นสุด</label>
+        <input type="date" id="dateTo">
+      </div>
+      <div style="display:flex;gap:8px;padding-bottom:2px;">
+        <button class="btn btn-ghost btn-sm" onclick="setRange(7)">7 วัน</button>
+        <button class="btn btn-ghost btn-sm" onclick="setRange(30)">30 วัน</button>
+        <button class="btn btn-ghost btn-sm" onclick="setRange(90)">90 วัน</button>
+        <button class="btn btn-primary" id="loadBtn">โหลดรายงาน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT TABS -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="tab-btn active" onclick="showTab('receive')">📥 การรับสินค้า</button>
+    <button class="tab-btn" onclick="showTab('issue')">📤 การเบิกวัตถุดิบ</button>
+    <button class="tab-btn" onclick="showTab('production')">⚙️ การผลิต</button>
+    <button class="tab-btn" onclick="showTab('dispatch')">🚚 การจ่ายสินค้า</button>
+    <button class="tab-btn" onclick="showTab('stock')">📦 สต็อกปัจจุบัน</button>
+    <button class="tab-btn" onclick="showTab('expiry')">⚠️ ใกล้หมดอายุ</button>
+  </div>
+
+  <!-- TAB: RECEIVE -->
+  <div id="tab-receive" class="tab-content">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        รายงานการรับสินค้า
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('receive')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>เลขที่ใบรับ</th><th>วันรับ</th><th>Supplier</th><th>ผู้รับ</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
+          <tbody id="receiveBody"></tbody>
+        </table>
+      </div>
+      <div id="receiveEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+    </div>
+  </div>
+
+  <!-- TAB: ISSUE -->
+  <div id="tab-issue" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        รายงานการเบิกวัตถุดิบ
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('issue')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>เลขที่ใบเบิก</th><th>วันเบิก</th><th>ผู้เบิก</th><th>RM Lot</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวนเบิก</th><th>หน่วย</th><th>FIFO</th></tr></thead>
+          <tbody id="issueBody"></tbody>
+        </table>
+      </div>
+      <div id="issueEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+    </div>
+  </div>
+
+  <!-- TAB: PRODUCTION -->
+  <div id="tab-production" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        รายงานการผลิต
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('production')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>เลขที่ใบผลิต</th><th>วันผลิต</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวนผลิต</th><th>หน่วย</th></tr></thead>
+          <tbody id="productionBody"></tbody>
+        </table>
+      </div>
+      <div id="productionEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+    </div>
+  </div>
+
+  <!-- TAB: DISPATCH -->
+  <div id="tab-dispatch" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        รายงานการจ่ายสินค้า
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('dispatch')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>เลขที่ใบจ่าย</th><th>วันจ่าย</th><th>ลูกค้า</th><th>ผู้จ่าย</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th></tr></thead>
+          <tbody id="dispatchBody"></tbody>
+        </table>
+      </div>
+      <div id="dispatchEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+    </div>
+  </div>
+
+  <!-- TAB: STOCK -->
+  <div id="tab-stock" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        สต็อกวัตถุดิบปัจจุบัน (ณ วันนี้)
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('stock')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>SKU</th><th>วัตถุดิบ</th><th>จำนวน Lot</th><th style="text-align:right;">สต็อกรวม</th><th>หน่วย</th><th>Min Stock</th><th>สถานะ</th></tr></thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+      </div>
+      <div id="stockEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูล</div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        สต็อกสินค้าสำเร็จรูปปัจจุบัน
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('fgstock')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>FG Lot</th><th>สินค้า</th><th>MFG</th><th>EXP</th><th style="text-align:right;">สต็อก</th><th>หน่วย</th><th>สถานะ</th></tr></thead>
+          <tbody id="fgStockBody"></tbody>
+        </table>
+      </div>
+      <div id="fgStockEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <!-- TAB: EXPIRY -->
+  <div id="tab-expiry" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        วัตถุดิบใกล้หมดอายุ (ภายใน 30 วัน)
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('expiry')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th>Supplier</th><th>วันรับ</th><th>EXP</th><th>เหลืออีก (วัน)</th><th style="text-align:right;">สต็อก</th><th>หน่วย</th></tr></thead>
+          <tbody id="expiryBody"></tbody>
+        </table>
+      </div>
+      <div id="expiryEmpty" class="empty-row" style="display:none;">ไม่มีรายการใกล้หมดอายุ</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<style>
+.tab-btn { border:1.5px solid var(--line);background:transparent;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
+.tab-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
+.tab-content { }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script>
+(function(){
+
+let currentTab='receive';
+let reportData = {};  // cache ข้อมูลแต่ละ tab
+
+// ===== DATE HELPERS =====
+function setRange(days) {
+  const to   = new Date();
+  const from = new Date(); from.setDate(from.getDate()-days+1);
+  document.getElementById('dateTo').value   = to.toISOString().slice(0,10);
+  document.getElementById('dateFrom').value = from.toISOString().slice(0,10);
+}
+
+window.setRange = setRange;
+
+window.showTab = function(tab) {
+  document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).style.display='block';
+  document.querySelectorAll('.tab-btn').forEach(el=>{
+    if(el.textContent.toLowerCase().includes(tab)||el.getAttribute('onclick')?.includes(`'${tab}'`))
+      el.classList.add('active');
+  });
+  currentTab=tab;
+};
+
+// ===== LOAD ALL =====
+async function loadAll() {
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+  if (!from||!to) { showToast('กรุณาเลือกช่วงวันที่','error'); return; }
+  const toEnd = to+'T23:59:59';
+
+  showLoading(true);
+  try {
+    await Promise.all([
+      loadReceive(from, toEnd),
+      loadIssue(from, toEnd),
+      loadProduction(from, toEnd),
+      loadDispatch(from, toEnd),
+      loadStock(),
+      loadExpiry(),
+    ]);
+  } finally { showLoading(false); }
+}
+
+document.getElementById('loadBtn').addEventListener('click', loadAll);
+
+// ===== RECEIVE =====
+async function loadReceive(from, to) {
+  const { data } = await db.from('receive_orders')
+    .select('ro_number,receive_date,operator,status,suppliers(name),receive_items(id)')
+    .gte('receive_date',from).lte('receive_date',to)
+    .order('receive_date',{ascending:false});
+  reportData.receive = data||[];
+  const body=document.getElementById('receiveBody');
+  const empty=document.getElementById('receiveEmpty');
+  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML=data.map(r=>`<tr>
+    <td><span class="lot-num">${r.ro_number}</span></td>
+    <td>${fmtDate(r.receive_date)}</td>
+    <td>${r.suppliers?.name||'-'}</td>
+    <td>${r.operator}</td>
+    <td style="text-align:center;">${r.receive_items?.length||0}</td>
+    <td><span class="status-badge s-confirmed">รับแล้ว</span></td>
+  </tr>`).join('');
+}
+
+// ===== ISSUE =====
+async function loadIssue(from, to) {
+  const { data } = await db.from('issue_orders')
+    .select('io_number,issue_date,operator,issue_items(qty_issued,is_fifo,rm_lots(lot_number,materials(sku,name),unit))')
+    .gte('issue_date',from).lte('issue_date',to)
+    .order('issue_date',{ascending:false});
+  reportData.issue = data||[];
+  const rows=[];
+  (data||[]).forEach(io=>{
+    (io.issue_items||[]).forEach(it=>{
+      rows.push({ io_number:io.io_number, issue_date:io.issue_date, operator:io.operator,
+        lot_number:it.rm_lots?.lot_number||'-', material:it.rm_lots?.materials?.name||'-',
+        sku:it.rm_lots?.materials?.sku||'-', qty:it.qty_issued, unit:it.rm_lots?.unit||'-', is_fifo:it.is_fifo });
+    });
+  });
+  reportData.issueRows=rows;
+  const body=document.getElementById('issueBody');
+  const empty=document.getElementById('issueEmpty');
+  if (!rows.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML=rows.map(r=>`<tr>
+    <td><span class="lot-num">${r.io_number}</span></td>
+    <td>${fmtDate(r.issue_date)}</td>
+    <td>${r.operator}</td>
+    <td><span class="lot-num">${r.lot_number}</span></td>
+    <td>${r.material} (${r.sku})</td>
+    <td style="text-align:right;font-weight:700;">${fmtQty(r.qty)}</td>
+    <td>${r.unit}</td>
+    <td>${r.is_fifo?'<span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:5px;font-weight:700;">FIFO</span>':'<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:5px;font-weight:700;">Override</span>'}</td>
+  </tr>`).join('');
+}
+
+// ===== PRODUCTION =====
+async function loadProduction(from, to) {
+  const { data } = await db.from('production_orders')
+    .select('po_number,production_date,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .gte('production_date',from).lte('production_date',to)
+    .order('production_date',{ascending:false});
+  reportData.production=data||[];
+  const body=document.getElementById('productionBody');
+  const empty=document.getElementById('productionEmpty');
+  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML=data.map(r=>{
+    const fg=r.fg_lots?.[0];
+    return `<tr>
+      <td><span class="lot-num">${r.po_number}</span></td>
+      <td>${fmtDT(r.production_date)}</td>
+      <td>${r.operator}</td>
+      <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
+      <td>${fg?.products?.name||'-'} ${fg?.products?.sku?`(${fg.products.sku})`:''}</td>
+      <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'}</td>
+      <td>${fg?.unit||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== DISPATCH =====
+async function loadDispatch(from, to) {
+  const { data } = await db.from('dispatch_orders')
+    .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lots(lot_number,unit,products(name,sku)))')
+    .gte('dispatch_date',from).lte('dispatch_date',to)
+    .order('dispatch_date',{ascending:false});
+  const rows=[];
+  (data||[]).forEach(doR=>{
+    (doR.dispatch_items||[]).forEach(it=>{
+      rows.push({ do_number:doR.do_number, dispatch_date:doR.dispatch_date,
+        customer:doR.customers?.name||'-', operator:doR.operator,
+        fg_lot:it.fg_lots?.lot_number||'-', product:it.fg_lots?.products?.name||'-',
+        sku:it.fg_lots?.products?.sku||'-', qty:it.qty, unit:it.fg_lots?.unit||'-' });
+    });
+  });
+  reportData.dispatchRows=rows;
+  const body=document.getElementById('dispatchBody');
+  const empty=document.getElementById('dispatchEmpty');
+  if (!rows.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML=rows.map(r=>`<tr>
+    <td><span class="lot-num">${r.do_number}</span></td>
+    <td>${fmtDT(r.dispatch_date)}</td>
+    <td>${r.customer}</td>
+    <td>${r.operator}</td>
+    <td><span class="lot-num">${r.fg_lot}</span></td>
+    <td>${r.product} (${r.sku})</td>
+    <td style="text-align:right;font-weight:700;">${fmtQty(r.qty)}</td>
+    <td>${r.unit}</td>
+  </tr>`).join('');
+}
+
+// ===== STOCK =====
+async function loadStock() {
+  const [rmRes, fgRes, matRes] = await Promise.all([
+    db.from('rm_lots').select('material_id,rm_stock(qty_on_hand)').eq('status','available'),
+    db.from('fg_lots').select('id,lot_number,mfg_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name)').eq('status','available').order('mfg_date',{ascending:true}),
+    db.from('materials').select('id,sku,name,unit,min_stock').eq('is_active',true),
+  ]);
+
+  // RM summary
+  const rmMap={};
+  (rmRes.data||[]).forEach(l=>{
+    if (!rmMap[l.material_id]) rmMap[l.material_id]={count:0,total:0};
+    rmMap[l.material_id].count++;
+    rmMap[l.material_id].total += l.rm_stock?.qty_on_hand||0;
+  });
+  const stockRows=(matRes.data||[]).map(m=>({...m, count:rmMap[m.id]?.count||0, total:rmMap[m.id]?.total||0}));
+  reportData.stock=stockRows;
+  const body=document.getElementById('stockBody');
+  const empty=document.getElementById('stockEmpty');
+  const hasStock=stockRows.filter(r=>r.total>0);
+  if (!hasStock.length){ body.innerHTML=''; empty.style.display='block'; }
+  else {
+    empty.style.display='none';
+    body.innerHTML=stockRows.filter(r=>r.total>0||r.min_stock>0).map(r=>{
+      const low = r.min_stock && r.total < r.min_stock;
+      return `<tr style="${low?'background:#FEF2F2;':''}">
+        <td><span class="lot-num">${r.sku}</span></td>
+        <td>${r.name}</td>
+        <td style="text-align:center;">${r.count}</td>
+        <td style="text-align:right;font-weight:700;color:${low?'var(--red)':'inherit'};">${fmtQty(r.total)}</td>
+        <td>${r.unit}</td>
+        <td style="text-align:right;color:var(--ink-soft);">${r.min_stock||'-'}</td>
+        <td>${low?'<span class="status-badge s-on_hold">ต่ำกว่า Min</span>':'<span class="status-badge s-available">ปกติ</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // FG stock
+  const fgLots=fgRes.data||[];
+  reportData.fgstock=fgLots;
+  const fgBody=document.getElementById('fgStockBody');
+  const fgEmpty=document.getElementById('fgStockEmpty');
+  if (!fgLots.length){ fgBody.innerHTML=''; fgEmpty.style.display='block'; return; }
+  fgEmpty.style.display='none';
+  fgBody.innerHTML=fgLots.map(l=>`<tr>
+    <td><span class="lot-num">${l.lot_number}</span></td>
+    <td>${l.products?.name||'-'} (${l.products?.sku||'-'})</td>
+    <td>${l.mfg_date?fmtDate(l.mfg_date):'-'}</td>
+    <td>${l.exp_date?fmtDate(l.exp_date):'-'}</td>
+    <td style="text-align:right;font-weight:700;">${fmtQty(l.fg_stock?.qty_on_hand||0)}</td>
+    <td>${l.unit}</td>
+    <td><span class="status-badge s-available">มีสต็อก</span></td>
+  </tr>`).join('');
+}
+
+// ===== EXPIRY =====
+async function loadExpiry() {
+  const now=new Date();
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()+30);
+  const { data } = await db.from('rm_lots')
+    .select('lot_number,receive_date,exp_date,unit,rm_stock(qty_on_hand),materials(sku,name),suppliers(name)')
+    .eq('status','available')
+    .lte('exp_date', cutoff.toISOString().slice(0,10))
+    .not('exp_date','is',null)
+    .order('exp_date',{ascending:true});
+  const rows=(data||[]).filter(l=>l.rm_stock?.qty_on_hand>0);
+  reportData.expiry=rows;
+  const body=document.getElementById('expiryBody');
+  const empty=document.getElementById('expiryEmpty');
+  if (!rows.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML=rows.map(r=>{
+    const daysLeft=Math.ceil((new Date(r.exp_date)-now)/(1000*60*60*24));
+    const color=daysLeft<=7?'var(--red)':daysLeft<=14?'var(--amber)':'var(--ink-soft)';
+    return `<tr>
+      <td><span class="lot-num">${r.lot_number}</span></td>
+      <td>${r.materials?.name||'-'} (${r.materials?.sku||'-'})</td>
+      <td>${r.suppliers?.name||'-'}</td>
+      <td>${r.receive_date?fmtDate(r.receive_date):'-'}</td>
+      <td style="font-weight:700;color:${color};">${fmtDate(r.exp_date)}</td>
+      <td style="font-weight:700;color:${color};text-align:center;">${daysLeft}</td>
+      <td style="text-align:right;font-weight:700;">${fmtQty(r.rm_stock?.qty_on_hand||0)}</td>
+      <td>${r.unit}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== EXPORT =====
+window.exportTab = function(tab) {
+  let rows=[], filename='', headers=[];
+  switch(tab) {
+    case 'receive':
+      headers=['เลขที่ใบรับ','วันรับ','Supplier','ผู้รับ','จำนวนรายการ'];
+      rows=(reportData.receive||[]).map(r=>[r.ro_number,fmtDate(r.receive_date),r.suppliers?.name,r.operator,r.receive_items?.length||0]);
+      filename='รายงานรับสินค้า'; break;
+    case 'issue':
+      headers=['เลขที่ใบเบิก','วันเบิก','ผู้เบิก','RM Lot','วัตถุดิบ','SKU','จำนวนเบิก','หน่วย','FIFO'];
+      rows=(reportData.issueRows||[]).map(r=>[r.io_number,fmtDate(r.issue_date),r.operator,r.lot_number,r.material,r.sku,r.qty,r.unit,r.is_fifo?'FIFO':'Override']);
+      filename='รายงานเบิกวัตถุดิบ'; break;
+    case 'production':
+      headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','จำนวนผลิต','หน่วย'];
+      rows=(reportData.production||[]).map(r=>{const fg=r.fg_lots?.[0]; return [r.po_number,fmtDT(r.production_date),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];});
+      filename='รายงานการผลิต'; break;
+    case 'dispatch':
+      headers=['เลขที่ใบจ่าย','วันจ่าย','ลูกค้า','ผู้จ่าย','FG Lot','สินค้า','SKU','จำนวน','หน่วย'];
+      rows=(reportData.dispatchRows||[]).map(r=>[r.do_number,fmtDT(r.dispatch_date),r.customer,r.operator,r.fg_lot,r.product,r.sku,r.qty,r.unit]);
+      filename='รายงานจ่ายสินค้า'; break;
+    case 'stock':
+      headers=['SKU','วัตถุดิบ','จำนวน Lot','สต็อกรวม','หน่วย','Min Stock'];
+      rows=(reportData.stock||[]).filter(r=>r.total>0).map(r=>[r.sku,r.name,r.count,r.total,r.unit,r.min_stock||0]);
+      filename='รายงานสต็อกวัตถุดิบ'; break;
+    case 'fgstock':
+      headers=['FG Lot','สินค้า','SKU','MFG','EXP','สต็อก','หน่วย'];
+      rows=(reportData.fgstock||[]).map(r=>[r.lot_number,r.products?.name,r.products?.sku,r.mfg_date?fmtDate(r.mfg_date):'-',r.exp_date?fmtDate(r.exp_date):'-',r.fg_stock?.qty_on_hand||0,r.unit]);
+      filename='รายงานสต็อกFG'; break;
+    case 'expiry':
+      headers=['RM Lot','วัตถุดิบ','SKU','Supplier','วันรับ','EXP','เหลือ(วัน)','สต็อก','หน่วย'];
+      rows=(reportData.expiry||[]).map(r=>{
+        const daysLeft=Math.ceil((new Date(r.exp_date)-new Date())/(1000*60*60*24));
+        return [r.lot_number,r.materials?.name,r.materials?.sku,r.suppliers?.name,r.receive_date?fmtDate(r.receive_date):'-',fmtDate(r.exp_date),daysLeft,r.rm_stock?.qty_on_hand||0,r.unit];
+      });
+      filename='รายงานใกล้หมดอายุ'; break;
+  }
+  if (!rows.length){ showToast('ไม่มีข้อมูลสำหรับ Export','error'); return; }
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'รายงาน');
+  XLSX.writeFile(wb,`${filename}_${document.getElementById('dateFrom').value||'all'}_${document.getElementById('dateTo').value||'all'}.xlsx`);
+};
+
+// ===== INIT =====
+(async function init(){
+  setRange(30);
+  showLoading(true);
+  await Promise.all([loadStock(), loadExpiry()]);
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>
