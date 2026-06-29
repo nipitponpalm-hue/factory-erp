@@ -153,9 +153,9 @@ async function loadMaster() {
     db.from('customers').select('id,name,contact').eq('is_active',true).order('name'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
     db.from('fg_lots')
-      .select('id,lot_number,exp_date,mfg_date,unit,status,fg_stock(qty_on_hand),products(id,sku,name)')
+      .select('id,lot_number,exp_date,produced_date,unit,status,fg_stock(qty_on_hand),products(id,sku,name)')
       .eq('status','available')
-      .order('mfg_date',{ascending:true}),
+      .order('produced_date',{ascending:true}),
   ]);
   customers = cusRes.data||[];
   operators = oprRes.data||[];
@@ -298,12 +298,12 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
 
       // หัก fg_stock
       const newQty = item.qty_on_hand - item.qty_dispatch;
-      await db.from('fg_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('lot_id',item.lot_id);
+      await db.from('fg_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('fg_lot_id',item.lot_id);
       if (newQty <= 0) await db.from('fg_lots').update({status:'depleted'}).eq('id',item.lot_id);
 
       // fg_transaction
       await db.from('fg_transactions').insert({
-        lot_id:item.lot_id, txn_type:'dispatch', qty:-item.qty_dispatch,
+        fg_lot_id:item.lot_id, txn_type:'dispatch', qty:-item.qty_dispatch,
         ref_id:doRec.id, ref_type:'dispatch_order', operator,
         note:`จ่ายให้ ${cusName} DO: ${doNumber}`
       });
@@ -320,8 +320,8 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
 
     // reload lots
     const fgRes = await db.from('fg_lots')
-      .select('id,lot_number,exp_date,mfg_date,unit,status,fg_stock(qty_on_hand),products(id,sku,name)')
-      .eq('status','available').order('mfg_date',{ascending:true});
+      .select('id,lot_number,exp_date,produced_date,unit,status,fg_stock(qty_on_hand),products(id,sku,name)')
+      .eq('status','available').order('produced_date',{ascending:true});
     allFgLots = (fgRes.data||[]).filter(l=>l.fg_stock?.qty_on_hand>0);
     renderFgList('');
     await loadRecentDO();
@@ -358,7 +358,7 @@ window.showDetail = async function(doId, doNumber){
   document.getElementById('detailModal').classList.add('show');
 
   const { data:doRec } = await db.from('dispatch_orders')
-    .select('do_number,dispatch_date,operator,vehicle_no,note,customers(name,contact),dispatch_items(qty,fg_lots(lot_number,exp_date,mfg_date,unit,products(sku,name)))')
+    .select('do_number,dispatch_date,operator,vehicle_no,note,customers(name,contact),dispatch_items(qty,fg_lots(lot_number,exp_date,produced_date,unit,products(sku,name)))')
     .eq('id',doId).single();
 
   if (!doRec){ document.getElementById('detailBody').innerHTML='ไม่พบข้อมูล'; return; }
@@ -375,7 +375,7 @@ window.showDetail = async function(doId, doNumber){
     <tbody>${items.map(it=>`<tr>
       <td><span class="lot-num">${it.fg_lots?.lot_number||'-'}</span></td>
       <td>${it.fg_lots?.products?.name||'-'} (${it.fg_lots?.products?.sku||'-'})</td>
-      <td>${it.fg_lots?.mfg_date?fmtDate(it.fg_lots.mfg_date):'-'}</td>
+      <td>${it.fg_lots?.produced_date?fmtDate(it.fg_lots.produced_date):'-'}</td>
       <td>${it.fg_lots?.exp_date?fmtDate(it.fg_lots.exp_date):'-'}</td>
       <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
       <td>${it.fg_lots?.unit||'-'}</td>

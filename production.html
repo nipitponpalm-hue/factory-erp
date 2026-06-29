@@ -406,7 +406,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       lot_number:   fgLotNumber,
       product_id:   prodSelected.id,
       po_id:        po.id,
-      mfg_date:     mfgDate,
+      produced_date:     mfgDate,
       exp_date:     expDate,
       initial_qty:  qtyProd,
       unit:         prodSelected.unit,
@@ -418,11 +418,11 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     if (fgErr) throw fgErr;
 
     // 4. fg_stock
-    await db.from('fg_stock').insert({ lot_id:fgLot.id, qty_on_hand:qtyProd });
+    await db.from('fg_stock').insert({ fg_lot_id:fgLot.id, qty_on_hand:qtyProd });
 
     // 5. fg_transaction
     await db.from('fg_transactions').insert({
-      lot_id:fgLot.id, txn_type:'production', qty:qtyProd,
+      fg_lot_id:fgLot.id, txn_type:'production', qty:qtyProd,
       ref_id:po.id, ref_type:'production_order', operator,
       note:`ผลิตจาก PO: ${poNumber}`
     });
@@ -498,7 +498,7 @@ window.showDetail = async function(poId, poNumber) {
 
   const [inRes, outRes] = await Promise.all([
     db.from('production_inputs').select('qty_used,rm_lots(lot_number,materials(sku,name),unit,exp_date)').eq('po_id',poId),
-    db.from('fg_lots').select('lot_number,products(sku,name),initial_qty,unit,mfg_date,exp_date,status').eq('po_id',poId),
+    db.from('fg_lots').select('lot_number,products(sku,name),initial_qty,unit,produced_date,exp_date,status').eq('po_id',poId),
   ]);
 
   const inputs  = inRes.data||[];
@@ -521,7 +521,7 @@ window.showDetail = async function(poId, poNumber) {
       <tbody>${outputs.map(r=>`<tr>
         <td><span class="lot-num">${r.lot_number}</span></td>
         <td>${r.products?.name||'-'} (${r.products?.sku||'-'})</td>
-        <td>${r.mfg_date?fmtDate(r.mfg_date):'-'}</td>
+        <td>${r.produced_date?fmtDate(r.produced_date):'-'}</td>
         <td>${r.exp_date?fmtDate(r.exp_date):'-'}</td>
         <td style="text-align:right;font-weight:700;">${fmtQty(r.initial_qty)}</td>
         <td>${r.unit}</td>

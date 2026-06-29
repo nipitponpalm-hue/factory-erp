@@ -393,7 +393,7 @@ async function loadDispatch(from, to) {
 async function loadStock() {
   const [rmRes, fgRes, matRes] = await Promise.all([
     db.from('rm_lots').select('material_id,rm_stock(qty_on_hand)').eq('status','available'),
-    db.from('fg_lots').select('id,lot_number,mfg_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name)').eq('status','available').order('mfg_date',{ascending:true}),
+    db.from('fg_lots').select('id,lot_number,produced_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name)').eq('status','available').order('produced_date',{ascending:true}),
     db.from('materials').select('id,sku,name,unit,min_stock').eq('is_active',true),
   ]);
 
@@ -436,7 +436,7 @@ async function loadStock() {
   fgBody.innerHTML=fgLots.map(l=>`<tr>
     <td><span class="lot-num">${l.lot_number}</span></td>
     <td>${l.products?.name||'-'} (${l.products?.sku||'-'})</td>
-    <td>${l.mfg_date?fmtDate(l.mfg_date):'-'}</td>
+    <td>${l.produced_date?fmtDate(l.produced_date):'-'}</td>
     <td>${l.exp_date?fmtDate(l.exp_date):'-'}</td>
     <td style="text-align:right;font-weight:700;">${fmtQty(l.fg_stock?.qty_on_hand||0)}</td>
     <td>${l.unit}</td>
@@ -583,7 +583,7 @@ window.exportTab = function(tab) {
       filename='รายงานสต็อกวัตถุดิบ'; break;
     case 'fgstock':
       headers=['FG Lot','สินค้า','SKU','MFG','EXP','สต็อก','หน่วย'];
-      rows=(reportData.fgstock||[]).map(r=>[r.lot_number,r.products?.name,r.products?.sku,r.mfg_date?fmtDate(r.mfg_date):'-',r.exp_date?fmtDate(r.exp_date):'-',r.fg_stock?.qty_on_hand||0,r.unit]);
+      rows=(reportData.fgstock||[]).map(r=>[r.lot_number,r.products?.name,r.products?.sku,r.produced_date?fmtDate(r.produced_date):'-',r.exp_date?fmtDate(r.exp_date):'-',r.fg_stock?.qty_on_hand||0,r.unit]);
       filename='รายงานสต็อกFG'; break;
     case 'expiry':
       headers=['RM Lot','วัตถุดิบ','SKU','Supplier','วันรับ','EXP','เหลือ(วัน)','สต็อก','หน่วย'];

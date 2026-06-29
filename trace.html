@@ -185,7 +185,7 @@ async function traceBackwardFromFG(fgLotId) {
   showLoading(true);
   try {
     const { data:fg } = await db.from('fg_lots')
-      .select('lot_number,mfg_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,production_date,operator)')
+      .select('lot_number,produced_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,production_date,operator)')
       .eq('id',fgLotId).single();
 
     // dispatch
@@ -256,7 +256,7 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
       <div class="trace-node-lot">${fg.lot_number}</div>
       <div class="trace-node-sub">
         สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
-        MFG: ${fg.mfg_date?fmtDate(fg.mfg_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
+        MFG: ${fg.produced_date?fmtDate(fg.produced_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
         จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${fg.status}" style="font-size:11px;">${fg.status}</span>
       </div>
     </div>
@@ -377,7 +377,7 @@ async function traceForwardFromRM(rmLotId) {
 
     // production inputs ที่ใช้ lot นี้
     const { data:inputs } = await db.from('production_inputs')
-      .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),mfg_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
+      .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),produced_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
       .eq('lot_id',rmLotId);
 
     renderForwardRM(rm, inputs||[]);
@@ -426,7 +426,7 @@ function renderForwardRM(rm, inputs) {
             <div class="trace-node-lot">${fg.lot_number}</div>
             <div class="trace-node-sub">
               สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
-              MFG: ${fg.mfg_date?fmtDate(fg.mfg_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
+              MFG: ${fg.produced_date?fmtDate(fg.produced_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
               จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b>
             </div>
           </div>
