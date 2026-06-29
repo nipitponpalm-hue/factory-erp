@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — QC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    ตรวจสอบคุณภาพ (QC)
+  </div>
+
+  <!-- รอ QC -->
+  <div class="card">
+    <div class="card-title">รายการ RM Lot รอการตรวจสอบ</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>Supplier</th><th>Supplier Lot</th><th>วันรับ</th><th>EXP</th><th></th></tr></thead>
+        <tbody id="pendingBody"></tbody>
+      </table>
+    </div>
+    <div id="pendingEmpty" class="empty-row">ไม่มีรายการรอ QC</div>
+  </div>
+
+  <!-- ประวัติ QC -->
+  <div class="card">
+    <div class="card-title">ประวัติการตรวจสอบ (30 รายการล่าสุด)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>วันที่ตรวจ</th><th>RM Lot</th><th>วัตถุดิบ</th><th>ผล</th><th>อุณหภูมิ</th><th>สภาพ</th><th>ผู้ตรวจ</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+    <div id="historyEmpty" class="empty-row">ยังไม่มีประวัติ</div>
+  </div>
+</main>
+
+<!-- QC MODAL -->
+<div class="modal-overlay" id="qcModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">บันทึกผล QC</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="qcLotTitle"></div>
+      </div>
+      <button class="modal-close" id="qcClose">✕</button>
+    </div>
+
+    <input type="hidden" id="qcLotId">
+
+    <div class="row" style="margin-bottom:12px;">
+      <div class="field">
+        <label>ผู้ตรวจสอบ *</label>
+        <div class="combo" id="qcOprComboWrap">
+          <input type="text" id="qcOprInput" placeholder="เลือกผู้ตรวจ..." autocomplete="off">
+          <div class="combo-list" id="qcOprList"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>อุณหภูมิที่วัดได้ (°C)</label>
+        <input type="number" id="qcTemp" step="0.1" placeholder="เช่น 4.5">
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>สภาพสินค้า</label>
+      <input type="text" id="qcAppearance" placeholder="เช่น สด สะอาด ไม่มีกลิ่น">
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label>หมายเหตุ</label>
+      <input type="text" id="qcNote" placeholder="">
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label>ผลการตรวจสอบ *</label>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-ghost" id="btnPassed" style="flex:1;font-size:15px;" onclick="submitQC('passed')">✅ ผ่าน (เข้า Stock)</button>
+        <button class="btn btn-ghost" id="btnOnHold" style="flex:1;" onclick="submitQC('on_hold')">⏸ พักไว้ก่อน</button>
+        <button class="btn btn-ghost" id="btnFailed" style="flex:1;color:var(--red);border-color:var(--red);" onclick="submitQC('failed')">❌ ไม่ผ่าน (ตีคืน)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script>
+(function(){
+
+let pendingLots = [], operators = [];
+
+// ===== LOAD =====
+async function loadData() {
+  const [lotsRes, oprRes] = await Promise.all([
+    db.from('rm_lots')
+      .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, materials(sku,name), suppliers(name)')
+      .eq('status','qc_pending')
+      .order('created_at'),
+    db.from('operators').select('id,name').eq('is_active',true).order('name'),
+  ]);
+  pendingLots = lotsRes.data || [];
+  operators   = oprRes.data  || [];
+  renderPending();
+  await loadHistory();
+}
+
+function renderPending() {
+  const body  = document.getElementById('pendingBody');
+  const empty = document.getElementById('pendingEmpty');
+  if (!pendingLots.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = pendingLots.map(l => `<tr>
+    <td><span class="lot-num">${l.lot_number}</span></td>
+    <td>${l.materials?.name||'-'} <span style="font-size:11.5px;color:var(--ink-soft);">(${l.materials?.sku||''})</span></td>
+    <td style="text-align:right;">${fmtQty(l.initial_qty)}</td>
+    <td>${l.unit}</td>
+    <td>${l.suppliers?.name||'-'}</td>
+    <td>${l.supplier_lot||'-'}</td>
+    <td>${fmtDate(l.receive_date)}</td>
+    <td>${l.exp_date ? fmtDate(l.exp_date) : '-'}</td>
+    <td><button class="btn btn-primary btn-sm" onclick="openQC('${l.id}')">ตรวจสอบ</button></td>
+  </tr>`).join('');
+}
+
+async function loadHistory() {
+  const { data } = await db
+    .from('qc_records')
+    .select('id, inspect_date, result, temp_actual, appearance, operator, note, rm_lots(lot_number, materials(name))')
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  const body  = document.getElementById('historyBody');
+  const empty = document.getElementById('historyEmpty');
+  if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const resultLabel = { passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน', on_hold:'⏸ พักไว้' };
+  const resultClass = { passed:'s-available', failed:'s-on_hold', on_hold:'s-pending' };
+
+  body.innerHTML = data.map(r => `<tr>
+    <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.inspect_date)}</td>
+    <td><span class="lot-num">${r.rm_lots?.lot_number||'-'}</span></td>
+    <td>${r.rm_lots?.materials?.name||'-'}</td>
+    <td><span class="status-badge ${resultClass[r.result]||''}">${resultLabel[r.result]||r.result}</span></td>
+    <td>${r.temp_actual!=null ? r.temp_actual+'°C' : '-'}</td>
+    <td>${r.appearance||'-'}</td>
+    <td>${r.operator}</td>
+    <td style="font-size:12.5px;color:var(--ink-soft);">${r.note||'-'}</td>
+  </tr>`).join('');
+}
+
+// ===== QC MODAL =====
+setupCombo({
+  inputEl: document.getElementById('qcOprInput'),
+  listEl:  document.getElementById('qcOprList'),
+  getItems(q) {
+    q = (q||'').toLowerCase();
+    return operators.filter(o => o.name.toLowerCase().includes(q));
+  },
+  renderItem: (o,i) => `<div class="combo-item" data-idx="${i}">${o.name}</div>`,
+  onSelect(o) { document.getElementById('qcOprInput').value = o.name; }
+});
+
+function openQC(lotId) {
+  const lot = pendingLots.find(l => l.id === lotId);
+  document.getElementById('qcLotId').value    = lotId;
+  document.getElementById('qcLotTitle').textContent = `${lot.lot_number} — ${lot.materials?.name} ${fmtQty(lot.initial_qty)} ${lot.unit}`;
+  document.getElementById('qcOprInput').value = '';
+  document.getElementById('qcTemp').value     = '';
+  document.getElementById('qcAppearance').value = '';
+  document.getElementById('qcNote').value     = '';
+  document.getElementById('qcModal').classList.add('show');
+}
+
+document.getElementById('qcClose').addEventListener('click', () => {
+  document.getElementById('qcModal').classList.remove('show');
+});
+
+async function submitQC(result) {
+  const lotId    = document.getElementById('qcLotId').value;
+  const operator = document.getElementById('qcOprInput').value.trim();
+  if (!operator) { showToast('กรุณาระบุผู้ตรวจสอบ', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const lot = pendingLots.find(l => l.id === lotId);
+
+    // 1. บันทึก qc_record
+    const { error: qcErr } = await db.from('qc_records').insert({
+      rm_lot_id:   lotId,
+      ro_item_id:  lot.ro_item_id||null,
+      operator,
+      result,
+      temp_actual: parseFloat(document.getElementById('qcTemp').value)||null,
+      appearance:  document.getElementById('qcAppearance').value.trim()||null,
+      note:        document.getElementById('qcNote').value.trim()||null,
+    });
+    if (qcErr) throw qcErr;
+
+    // 2. อัปเดต rm_lots status + rm_stock
+    if (result === 'passed') {
+      // เปลี่ยน status เป็น available
+      const { error: lotErr } = await db.from('rm_lots').update({ status: 'available' }).eq('id', lotId);
+      if (lotErr) throw lotErr;
+      // เติม stock
+      const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
+      if (stErr) throw stErr;
+      // บันทึก transaction
+      await db.from('rm_transactions').insert({
+        lot_id: lotId, txn_type: 'receive', qty: lot.initial_qty,
+        ref_type: 'qc_passed', operator,
+        note: 'QC ผ่าน — เข้า Stock',
+      });
+      showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`);
+
+    } else if (result === 'on_hold') {
+      await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);
+      showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
+
+    } else {
+      await db.from('rm_lots').update({ status: 'expired' }).eq('id', lotId);
+      showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
+    }
+
+    document.getElementById('qcModal').classList.remove('show');
+    await loadData();
+
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+window.openQC    = openQC;
+window.submitQC  = submitQC;
+
+// ===== INIT =====
+(async function init() {
+  showLoading(true);
+  await loadData();
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>
