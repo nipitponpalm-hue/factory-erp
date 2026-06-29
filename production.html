@@ -355,7 +355,7 @@ function checkConfirm() {
   document.getElementById('confirmBtn').disabled = !ok;
 }
 
-['qtyProduced','mfgDate','expDate'].forEach(id=>{
+['qtyProduced','expDate'].forEach(id=>{
   document.getElementById(id).addEventListener('input', ()=>{ calcYield(); checkConfirm(); });
 });
 
@@ -365,7 +365,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
   const prodDateV  = document.getElementById('prodDate').value;
   const poNote     = document.getElementById('poNote').value.trim()||null;
   const qtyProd    = parseFloat(document.getElementById('qtyProduced').value);
-  const mfgDate    = document.getElementById('mfgDate').value||null;
+  const mfgDate    = document.getElementById('mfgDate').value || new Date().toISOString().slice(0,10);
   const expDate    = document.getElementById('expDate').value||null;
   const fgNote     = document.getElementById('fgNote').value.trim()||null;
 
@@ -383,7 +383,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
     // 2. production_inputs (RM Lots ที่ใช้)
     for (const rm of rmInputs) {
-      await db.from('production_inputs').insert({ po_id:po.id, lot_id:rm.lot_id, qty_used:rm.qty_used });
+      await db.from('production_inputs').insert({ po_id:po.id, lot_id:rm.lot_id, qty_used:rm.qty_used, unit:rm.unit });
 
       // หัก rm_stock
       const newQty = rm.qty_on_hand - rm.qty_used;
