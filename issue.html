@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — เบิกวัตถุดิบ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    เบิกวัตถุดิบ (Issue)
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">1</span> ข้อมูลการเบิก</div>
+    <div class="row">
+      <div class="field">
+        <label>ผู้เบิก *</label>
+        <div class="combo" id="oprComboWrap">
+          <input type="text" id="oprInput" placeholder="เลือกผู้เบิก..." autocomplete="off">
+          <div class="combo-list" id="oprList"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>วันเวลาเบิก</label>
+        <input type="datetime-local" id="issueDate">
+      </div>
+      <div class="field-lg">
+        <label>หมายเหตุ</label>
+        <input type="text" id="ioNote" placeholder="เช่น เบิกสำหรับผลิต Batch เช้า">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">2</span> เลือกวัตถุดิบและจำนวนที่ต้องการ</div>
+    <div class="row">
+      <div class="field-lg">
+        <label>วัตถุดิบ *</label>
+        <div class="combo" id="matComboWrap">
+          <input type="text" id="matInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ..." autocomplete="off">
+          <div class="combo-list" id="matList"></div>
+        </div>
+        <input type="hidden" id="matId">
+      </div>
+      <div class="field">
+        <label>จำนวนที่ต้องการ *</label>
+        <input type="number" id="qtyNeeded" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>หน่วย</label>
+        <input type="text" id="unitDisplay" readonly placeholder="-">
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+        <button class="btn btn-primary" id="suggestBtn">⚡ ระบบเสนอ FIFO</button>
+      </div>
+    </div>
+
+    <!-- FIFO PLAN -->
+    <div id="fifoPlanWrap" style="display:none;margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:8px;">
+        แผน FIFO — ระบบเลือก Lot เก่าสุดก่อน
+        <span id="shortageWarn" style="color:var(--red);font-weight:700;margin-left:8px;display:none;"></span>
+      </div>
+      <div id="fifoPlanRows"></div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" id="addToCartBtn">+ เพิ่มลงรายการเบิก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">3</span> รายการที่จะเบิก</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th>วันรับ</th><th>EXP</th><th style="text-align:right;">จำนวนเบิก</th><th>หน่วย</th><th>FIFO</th><th>เหตุผล Override</th><th></th></tr></thead>
+        <tbody id="cartBody"></tbody>
+      </table>
+    </div>
+    <div id="cartEmpty" class="empty-row">ยังไม่มีรายการ</div>
+    <div class="save-bar">
+      <button class="btn btn-ghost" id="clearCartBtn">ล้างรายการ</button>
+      <button class="btn btn-primary" id="confirmBtn" disabled>✓ ยืนยันเบิกสินค้า</button>
+    </div>
+  </div>
+
+  <!-- รายการล่าสุด -->
+  <div class="card">
+    <div class="card-title">ใบเบิกล่าสุด</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>เลขที่ใบเบิก</th><th>วันเวลา</th><th>ผู้เบิก</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
+        <tbody id="ioBody"></tbody>
+      </table>
+    </div>
+    <div id="ioEmpty" class="empty-row">ยังไม่มีข้อมูล</div>
+  </div>
+</main>
+
+<!-- OVERRIDE REASON MODAL -->
+<div class="modal-overlay" id="overrideModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">เหตุผลที่ไม่ใช้ FIFO</div>
+      <button class="modal-close" onclick="document.getElementById('overrideModal').classList.remove('show')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">Lot <span id="overrideLotNum" style="font-weight:700;"></span> ถูกแก้ไขจำนวน กรุณาระบุเหตุผล</p>
+    <textarea id="overrideReason" rows="3" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:14px;" placeholder="เช่น Lot นี้ใกล้หมดอายุ ควรใช้ก่อน..."></textarea>
+    <div class="save-bar" style="margin-top:12px;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('overrideModal').classList.remove('show')">ยกเลิก</button>
+      <button class="btn btn-primary btn-sm" id="overrideConfirmBtn">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<style>
+.tab-btn { border:none;background:transparent;padding:8px 16px;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
+.tab-btn.active { background:var(--surface);color:var(--green-deep);box-shadow:var(--shadow); }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/lot.js"></script>
+<script src="js/fifo.js"></script>
+<script>
+(function(){
+
+let operators = [], materials = [];
+let fifoPlan = [];   // แผน FIFO ปัจจุบัน
+let cart = [];       // รายการที่รอเบิก (อาจมีหลาย material)
+let matSelected = null;
+let pendingOverride = null; // { rowIdx, lotNum }
+
+// ===== LOAD MASTER =====
+async function loadMaster() {
+  const [oprRes, matRes] = await Promise.all([
+    db.from('operators').select('id,name').eq('is_active',true).order('name'),
+    db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
+  ]);
+  operators = oprRes.data || [];
+  materials = matRes.data || [];
+}
+
+// ===== COMBOS =====
+setupCombo({
+  inputEl: document.getElementById('oprInput'),
+  listEl:  document.getElementById('oprList'),
+  getItems(q) { q=(q||'').toLowerCase(); return operators.filter(o=>o.name.toLowerCase().includes(q)); },
+  renderItem: (o,i) => `<div class="combo-item" data-idx="${i}">${o.name}</div>`,
+  onSelect(o) { document.getElementById('oprInput').value = o.name; checkConfirm(); }
+});
+
+setupCombo({
+  inputEl: document.getElementById('matInput'),
+  listEl:  document.getElementById('matList'),
+  getItems(q) {
+    q=(q||'').toLowerCase();
+    if(!q) return materials.slice(0,40);
+    return materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)).slice(0,40);
+  },
+  renderItem: (m,i) => `<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
+  onQueryChange() { matSelected=null; document.getElementById('matId').value=''; document.getElementById('unitDisplay').value=''; document.getElementById('fifoPlanWrap').style.display='none'; },
+  onSelect(m) {
+    matSelected = m;
+    document.getElementById('matInput').value = `${m.sku} — ${m.name}`;
+    document.getElementById('matId').value = m.id;
+    document.getElementById('unitDisplay').value = m.unit;
+    document.getElementById('qtyNeeded').focus();
+    document.getElementById('fifoPlanWrap').style.display='none';
+  }
+});
+
+// ===== FIFO SUGGEST =====
+document.getElementById('suggestBtn').addEventListener('click', async () => {
+  if (!matSelected) { showToast('กรุณาเลือกวัตถุดิบ', 'error'); return; }
+  const qty = parseFloat(document.getElementById('qtyNeeded').value);
+  if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวนที่ต้องการ', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const result = await suggestFifo(matSelected.id, qty);
+    fifoPlan = result.plan;
+
+    const shortWarn = document.getElementById('shortageWarn');
+    if (result.shortage > 0) {
+      shortWarn.textContent = `⚠ Stock ไม่พอ ขาด ${fmtQty(result.shortage)} ${matSelected.unit}`;
+      shortWarn.style.display = 'inline';
+    } else {
+      shortWarn.style.display = 'none';
+    }
+
+    renderFifoPlan();
+    document.getElementById('fifoPlanWrap').style.display = 'block';
+  } catch(e) {
+    showToast('โหลดข้อมูล FIFO ไม่สำเร็จ', 'error');
+  } finally {
+    showLoading(false);
+  }
+});
+
+function renderFifoPlan() {
+  const wrap = document.getElementById('fifoPlanRows');
+  if (!fifoPlan.length) { wrap.innerHTML = '<div style="color:var(--ink-soft);font-size:13px;padding:8px;">ไม่มี Stock วัตถุดิบนี้</div>'; return; }
+  wrap.innerHTML = fifoPlan.map((row, i) => `
+    <div class="fifo-row" id="fifo-row-${i}">
+      <div style="flex:1;min-width:160px;">
+        <span class="lot-num">${row.lot_number}</span>
+        <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(row.qty_on_hand)} ${matSelected.unit}</span>
+        ${row.exp_date ? `<span style="font-size:11px;color:var(--amber);margin-left:6px;">EXP ${fmtDate(row.exp_date)}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="margin:0;white-space:nowrap;">จำนวนเบิก</label>
+        <input type="number" step="0.01" min="0" max="${row.qty_on_hand}"
+          value="${row.qty}" data-original="${row.qty}" data-idx="${i}"
+          style="width:110px;" class="fifo-qty-input"
+          onchange="onFifoQtyChange(${i}, this)">
+        <span style="font-size:13px;color:var(--ink-soft);">${matSelected.unit}</span>
+        ${row.is_fifo ? '<span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:5px;font-weight:700;">FIFO</span>' : '<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:5px;font-weight:700;">Override</span>'}
+      </div>
+    </div>`).join('');
+}
+
+function onFifoQtyChange(idx, input) {
+  const original = parseFloat(input.dataset.original);
+  const newVal   = parseFloat(input.value) || 0;
+  if (newVal !== original) {
+    // ต้องใส่เหตุผล override
+    pendingOverride = { idx, input, originalVal: original };
+    document.getElementById('overrideLotNum').textContent = fifoPlan[idx].lot_number;
+    document.getElementById('overrideReason').value = fifoPlan[idx].override_reason || '';
+    document.getElementById('overrideModal').classList.add('show');
+  } else {
+    fifoPlan[idx].is_fifo = true;
+    fifoPlan[idx].override_reason = null;
+    fifoPlan[idx].qty = newVal;
+  }
+}
+
+document.getElementById('overrideConfirmBtn').addEventListener('click', () => {
+  const reason = document.getElementById('overrideReason').value.trim();
+  if (!reason) { showToast('กรุณาระบุเหตุผล', 'error'); return; }
+  const { idx, input, originalVal } = pendingOverride;
+  const newVal = parseFloat(input.value) || 0;
+  fifoPlan[idx].qty = newVal;
+  fifoPlan[idx].is_fifo = (newVal === originalVal);
+  fifoPlan[idx].override_reason = reason;
+  pendingOverride = null;
+  document.getElementById('overrideModal').classList.remove('show');
+  renderFifoPlan();
+  // restore values after re-render
+  document.querySelectorAll('.fifo-qty-input').forEach(inp => {
+    const i = parseInt(inp.dataset.idx);
+    inp.value = fifoPlan[i].qty;
+    inp.dataset.original = fifoPlan[i].is_fifo ? fifoPlan[i].qty : fifoPlan[i].qty;
+  });
+});
+
+// ===== ADD TO CART =====
+document.getElementById('addToCartBtn').addEventListener('click', () => {
+  const validRows = fifoPlan.filter(r => r.qty > 0);
+  if (!validRows.length) { showToast('ไม่มีรายการที่จะเบิก', 'error'); return; }
+
+  // อ่านค่าจริงจาก input fields
+  document.querySelectorAll('.fifo-qty-input').forEach(inp => {
+    const i = parseInt(inp.dataset.idx);
+    fifoPlan[i].qty = parseFloat(inp.value) || 0;
+  });
+
+  fifoPlan.filter(r => r.qty > 0).forEach(row => {
+    cart.push({
+      lot_id:          row.lot_id,
+      lot_number:      row.lot_number,
+      material_name:   matSelected.name,
+      material_sku:    matSelected.sku,
+      unit:            matSelected.unit,
+      qty_issued:      row.qty,
+      qty_on_hand:     row.qty_on_hand,
+      exp_date:        row.exp_date,
+      receive_date:    row.receive_date,
+      is_fifo:         row.is_fifo,
+      override_reason: row.override_reason || null,
+    });
+  });
+
+  renderCart();
+  // reset
+  document.getElementById('matInput').value = '';
+  document.getElementById('matId').value = '';
+  document.getElementById('unitDisplay').value = '';
+  document.getElementById('qtyNeeded').value = '';
+  document.getElementById('fifoPlanWrap').style.display = 'none';
+  matSelected = null; fifoPlan = [];
+  document.getElementById('matInput').focus();
+});
+
+// ===== CART =====
+function renderCart() {
+  const body  = document.getElementById('cartBody');
+  const empty = document.getElementById('cartEmpty');
+  if (!cart.length) { body.innerHTML=''; empty.style.display='block'; checkConfirm(); return; }
+  empty.style.display = 'none';
+  body.innerHTML = cart.map((it,i) => `<tr>
+    <td><span class="lot-num">${it.lot_number}</span></td>
+    <td>${it.material_name} <span style="font-size:11px;color:var(--ink-soft);">(${it.material_sku})</span></td>
+    <td>${it.receive_date ? fmtDate(it.receive_date) : '-'}</td>
+    <td>${it.exp_date ? fmtDate(it.exp_date) : '-'}</td>
+    <td style="text-align:right;font-weight:700;">${fmtQty(it.qty_issued)}</td>
+    <td>${it.unit}</td>
+    <td>${it.is_fifo ? '<span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:5px;font-weight:700;">FIFO</span>' : '<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:5px;font-weight:700;">Override</span>'}</td>
+    <td style="font-size:12px;color:var(--ink-soft);">${it.override_reason||'-'}</td>
+    <td><button class="btn-icon" style="color:var(--red);" data-i="${i}">✕</button></td>
+  </tr>`).join('');
+  body.querySelectorAll('button[data-i]').forEach(btn => {
+    btn.addEventListener('click', () => { cart.splice(Number(btn.dataset.i),1); renderCart(); });
+  });
+  checkConfirm();
+}
+
+function checkConfirm() {
+  const ok = document.getElementById('oprInput').value.trim() && cart.length > 0;
+  document.getElementById('confirmBtn').disabled = !ok;
+}
+document.getElementById('oprInput').addEventListener('input', checkConfirm);
+document.getElementById('clearCartBtn').addEventListener('click', () => { cart=[]; renderCart(); });
+
+// ===== CONFIRM: สร้าง IO + หัก stock =====
+document.getElementById('confirmBtn').addEventListener('click', async () => {
+  const operator  = document.getElementById('oprInput').value.trim();
+  const issueDateVal = document.getElementById('issueDate').value;
+  const ioNote    = document.getElementById('ioNote').value.trim()||null;
+  if (!operator || !cart.length) return;
+
+  document.getElementById('confirmBtn').disabled = true;
+  showLoading(true);
+
+  try {
+    const ioNumber   = await generateLotNumber('IO');
+    const issuedAt   = issueDateVal ? new Date(issueDateVal).toISOString() : new Date().toISOString();
+
+    // 1. สร้าง issue_order
+    const { data: ioData, error: ioErr } = await db
+      .from('issue_orders')
+      .insert({ io_number: ioNumber, operator, issue_date: issuedAt, note: ioNote, status: 'issued' })
+      .select('id').single();
+    if (ioErr) throw ioErr;
+
+    // 2. สำหรับแต่ละ Lot ในตะกร้า
+    for (const item of cart) {
+      // insert issue_item
+      const { error: iiErr } = await db.from('issue_items').insert({
+        io_id:           ioData.id,
+        lot_id:          item.lot_id,
+        qty_issued:      item.qty_issued,
+        is_fifo:         item.is_fifo,
+        override_reason: item.override_reason,
+      });
+      if (iiErr) throw iiErr;
+
+      // หัก rm_stock
+      const newQty = item.qty_on_hand - item.qty_issued;
+      const { error: stErr } = await db.from('rm_stock')
+        .update({ qty_on_hand: Math.max(0, newQty), updated_at: new Date().toISOString() })
+        .eq('lot_id', item.lot_id);
+      if (stErr) throw stErr;
+
+      // ถ้าหมด → depleted
+      if (newQty <= 0) {
+        await db.from('rm_lots').update({ status: 'depleted' }).eq('id', item.lot_id);
+      }
+
+      // บันทึก transaction
+      await db.from('rm_transactions').insert({
+        lot_id:   item.lot_id,
+        txn_type: 'issue',
+        qty:      -item.qty_issued,
+        ref_id:   ioData.id,
+        ref_type: 'issue_order',
+        operator,
+        note:     item.is_fifo ? `IO: ${ioNumber}` : `IO: ${ioNumber} (Override: ${item.override_reason})`,
+      });
+    }
+
+    showToast(`✅ เบิกสินค้าสำเร็จ ใบเบิก ${ioNumber} — ${cart.length} รายการ`);
+    cart = [];
+    renderCart();
+    document.getElementById('oprInput').value = '';
+    document.getElementById('ioNote').value = '';
+    document.getElementById('issueDate').value = toLocalInput();
+    await loadRecentIO();
+
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+    document.getElementById('confirmBtn').disabled = false;
+  } finally {
+    showLoading(false);
+  }
+});
+
+// ===== RECENT IO =====
+async function loadRecentIO() {
+  const { data } = await db
+    .from('issue_orders')
+    .select('id, io_number, issue_date, operator, status, issue_items(id)')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const body  = document.getElementById('ioBody');
+  const empty = document.getElementById('ioEmpty');
+  if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = data.map(r => `<tr>
+    <td><span class="lot-num">${r.io_number}</span></td>
+    <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.issue_date)}</td>
+    <td>${r.operator}</td>
+    <td style="text-align:center;">${r.issue_items?.length||0}</td>
+    <td><span class="status-badge s-issued">เบิกแล้ว</span></td>
+  </tr>`).join('');
+}
+
+window.onFifoQtyChange = onFifoQtyChange;
+
+// ===== INIT =====
+(async function init() {
+  showLoading(true);
+  document.getElementById('issueDate').value = toLocalInput();
+  await loadMaster();
+  await loadRecentIO();
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>
