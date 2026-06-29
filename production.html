@@ -94,6 +94,16 @@
     <div id="rmEmpty" class="empty-row">ยังไม่มีวัตถุดิบ</div>
   </div>
 
+  <!-- YIELD BOX -->
+  <div id="yieldBox" style="display:none;align-items:center;gap:16px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;">
+    <div style="font-size:36px;font-weight:800;" id="yieldVal">-</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">Yield การแปรรูป</div>
+      <div style="font-size:12.5px;color:var(--ink-soft);" id="yieldDetail"></div>
+      <div id="yieldWarn" style="display:none;font-size:12px;color:#92400E;font-weight:700;margin-top:2px;">⚠ Yield ต่ำกว่า 50% — กรุณาตรวจสอบ</div>
+    </div>
+  </div>
+
   <!-- STEP 3 -->
   <div class="card">
     <div class="card-title"><span class="step-badge">3</span> สินค้าสำเร็จรูป (FG Output)</div>
@@ -315,8 +325,25 @@ function renderRmTable() {
   checkConfirm();
 }
 
-window.updateRmQty = function(i, val) { rmInputs[i].qty_used = parseFloat(val)||0; checkConfirm(); };
-window.removeRm    = function(i) { rmInputs.splice(i,1); renderRmTable(); };
+window.updateRmQty = function(i, val) { rmInputs[i].qty_used = parseFloat(val)||0; calcYield(); checkConfirm(); };
+window.removeRm    = function(i) { rmInputs.splice(i,1); renderRmTable(); calcYield(); };
+
+// ===== YIELD CALC =====
+function calcYield() {
+  const totalRm  = rmInputs.reduce((s,r)=>s+(r.qty_used||0), 0);
+  const qtyProd  = parseFloat(document.getElementById('qtyProduced').value)||0;
+  const box      = document.getElementById('yieldBox');
+  if (!totalRm || !qtyProd) { box.style.display='none'; return; }
+  const yld = (qtyProd / totalRm * 100).toFixed(1);
+  const low = parseFloat(yld) < 50;
+  box.style.display = 'flex';
+  box.style.background = low ? '#FEF3C7' : '#D1FAE5';
+  box.style.borderColor = low ? '#F59E0B' : '#10B981';
+  document.getElementById('yieldVal').textContent = `${yld}%`;
+  document.getElementById('yieldVal').style.color = low ? '#92400E' : '#065F46';
+  document.getElementById('yieldDetail').textContent = `RM รวม ${fmtQty(totalRm)} → FG ${fmtQty(qtyProd)}`;
+  document.getElementById('yieldWarn').style.display = low ? 'inline' : 'none';
+}
 
 // ===== CHECK CONFIRM =====
 function checkConfirm() {
@@ -329,7 +356,7 @@ function checkConfirm() {
 }
 
 ['qtyProduced','mfgDate','expDate'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', checkConfirm);
+  document.getElementById(id).addEventListener('input', ()=>{ calcYield(); checkConfirm(); });
 });
 
 // ===== CONFIRM =====
@@ -373,16 +400,20 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
     // 3. สร้าง FG Lot
     const fgLotNumber = await generateLotNumber('FG');
+    const totalRmQty  = rmInputs.reduce((s,r)=>s+r.qty_used, 0);
+    const yieldPct    = totalRmQty > 0 ? parseFloat((qtyProd / totalRmQty * 100).toFixed(2)) : null;
     const { data:fgLot, error:fgErr } = await db.from('fg_lots').insert({
-      lot_number: fgLotNumber,
-      product_id: prodSelected.id,
-      po_id:      po.id,
-      mfg_date:   mfgDate,
-      exp_date:   expDate,
-      initial_qty:qtyProd,
-      unit:       prodSelected.unit,
-      status:     'available',
-      note:       fgNote,
+      lot_number:   fgLotNumber,
+      product_id:   prodSelected.id,
+      po_id:        po.id,
+      mfg_date:     mfgDate,
+      exp_date:     expDate,
+      initial_qty:  qtyProd,
+      unit:         prodSelected.unit,
+      status:       'available',
+      note:         fgNote,
+      yield_pct:    yieldPct,
+      rm_qty_input: totalRmQty,
     }).select('id').single();
     if (fgErr) throw fgErr;
 
