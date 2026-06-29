@@ -377,7 +377,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
     // 1. สร้าง production_order
     const { data:po, error:poErr } = await db.from('production_orders')
-      .insert({ po_number:poNumber, operator, production_date:prodAt, note:poNote, status:'completed' })
+      .insert({ po_number:poNumber, operator, started_at:prodAt, completed_at:prodAt, note:poNote, status:'completed' })
       .select('id').single();
     if (poErr) throw poErr;
 
@@ -469,7 +469,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 // ===== RECENT PO =====
 async function loadRecentPO() {
   const { data } = await db.from('production_orders')
-    .select('id,po_number,production_date,operator,status,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .select('id,po_number,completed_at,operator,status,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
     .order('created_at',{ascending:false}).limit(20);
 
   const body=document.getElementById('poBody');
@@ -480,7 +480,7 @@ async function loadRecentPO() {
     const fg = r.fg_lots?.[0];
     return `<tr>
       <td><span class="lot-num">${r.po_number}</span></td>
-      <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.production_date)}</td>
+      <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.completed_at)}</td>
       <td>${r.operator}</td>
       <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
       <td>${fg?.products?`${fg.products.name}`:'-'}</td>

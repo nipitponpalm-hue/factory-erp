@@ -335,9 +335,9 @@ async function loadIssue(from, to) {
 // ===== PRODUCTION =====
 async function loadProduction(from, to) {
   const { data } = await db.from('production_orders')
-    .select('po_number,production_date,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
-    .gte('production_date',from).lte('production_date',to)
-    .order('production_date',{ascending:false});
+    .select('po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .gte('completed_at',from).lte('completed_at',to)
+    .order('completed_at',{ascending:false});
   reportData.production=data||[];
   const body=document.getElementById('productionBody');
   const empty=document.getElementById('productionEmpty');
@@ -347,7 +347,7 @@ async function loadProduction(from, to) {
     const fg=r.fg_lots?.[0];
     return `<tr>
       <td><span class="lot-num">${r.po_number}</span></td>
-      <td>${fmtDT(r.production_date)}</td>
+      <td>${fmtDT(r.completed_at)}</td>
       <td>${r.operator}</td>
       <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
       <td>${fg?.products?.name||'-'} ${fg?.products?.sku?`(${fg.products.sku})`:''}</td>
@@ -447,16 +447,16 @@ async function loadStock() {
 // ===== YIELD =====
 async function loadYield(from, to) {
   const { data } = await db.from('production_orders')
-    .select('po_number,production_date,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct,rm_qty_input)')
-    .gte('production_date', from).lte('production_date', to)
-    .order('production_date', { ascending: false });
+    .select('po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct,rm_qty_input)')
+    .gte('completed_at', from).lte('completed_at', to)
+    .order('completed_at', { ascending: false });
 
   const rows = [];
   (data||[]).forEach(r => {
     (r.fg_lots||[]).forEach(fg => {
       if (fg.yield_pct != null) rows.push({
         po_number: r.po_number,
-        production_date: r.production_date,
+        completed_at: r.completed_at,
         operator: r.operator,
         lot_number: fg.lot_number,
         product: fg.products?.name||'-',
@@ -480,7 +480,7 @@ async function loadYield(from, to) {
       const color = r.yield_pct >= 70 ? 'var(--green-deep)' : r.yield_pct >= 50 ? 'var(--amber)' : 'var(--red)';
       return `<tr>
         <td><span class="lot-num">${r.po_number}</span></td>
-        <td style="font-size:12.5px;">${fmtDT(r.production_date)}</td>
+        <td style="font-size:12.5px;">${fmtDT(r.completed_at)}</td>
         <td>${r.operator}</td>
         <td><span class="lot-num">${r.lot_number}</span></td>
         <td>${r.product}</td>
@@ -571,7 +571,7 @@ window.exportTab = function(tab) {
       filename='รายงานเบิกวัตถุดิบ'; break;
     case 'production':
       headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','จำนวนผลิต','หน่วย'];
-      rows=(reportData.production||[]).map(r=>{const fg=r.fg_lots?.[0]; return [r.po_number,fmtDT(r.production_date),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];});
+      rows=(reportData.production||[]).map(r=>{const fg=r.fg_lots?.[0]; return [r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];});
       filename='รายงานการผลิต'; break;
     case 'dispatch':
       headers=['เลขที่ใบจ่าย','วันจ่าย','ลูกค้า','ผู้จ่าย','FG Lot','สินค้า','SKU','จำนวน','หน่วย'];
@@ -594,7 +594,7 @@ window.exportTab = function(tab) {
       filename='รายงานใกล้หมดอายุ'; break;
     case 'yield':
       headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','RM ที่ใส่','FG ที่ได้','หน่วย','Yield %'];
-      rows=(reportData.yieldRows||[]).map(r=>[r.po_number,fmtDT(r.production_date),r.operator,r.lot_number,r.product,r.sku,r.rm_qty,r.fg_qty,r.unit,r.yield_pct]);
+      rows=(reportData.yieldRows||[]).map(r=>[r.po_number,fmtDT(r.completed_at),r.operator,r.lot_number,r.product,r.sku,r.rm_qty,r.fg_qty,r.unit,r.yield_pct]);
       filename='รายงาน Yield'; break;
   }
   if (!rows.length){ showToast('ไม่มีข้อมูลสำหรับ Export','error'); return; }
