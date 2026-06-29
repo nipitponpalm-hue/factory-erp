@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <h1>Factory ERP</h1>
+    <p>ระบบจัดการโรงงาน</p>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      รับสินค้า
+    </a>
+    <a href="qc.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      ตรวจสอบคุณภาพ (QC)
+    </a>
+    <a href="inventory.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      คลังสินค้า (Inventory)
+    </a>
+    <a href="issue.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      เบิกวัตถุดิบ (Issue)
+    </a>
+    <a href="production.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      ผลิต (Production)
+    </a>
+    <a href="dispatch.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      จ่ายสินค้า (Dispatch)
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Traceability
+    </a>
+    <a href="reports.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      รายงาน (Reports)
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Master Data
+    </a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+
+  <div class="stat-grid" id="statGrid">
+    <div class="stat-box"><div class="lbl">วัตถุดิบ Lot ใน Stock</div><div class="val" id="s-rmLots">—</div></div>
+    <div class="stat-box"><div class="lbl">รอ QC</div><div class="val" id="s-qcPending" style="color:var(--amber);">—</div></div>
+    <div class="stat-box"><div class="lbl">สินค้าสำเร็จรูป Lot</div><div class="val" id="s-fgLots">—</div></div>
+    <div class="stat-box"><div class="lbl">รับสินค้าวันนี้</div><div class="val" id="s-todayRO">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">วัตถุดิบใกล้หมด (Stock ต่ำกว่า Min)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>SKU</th><th>ชื่อวัตถุดิบ</th><th style="text-align:right;">Stock รวม</th><th style="text-align:right;">Min Stock</th><th>หน่วย</th></tr></thead>
+        <tbody id="lowStockBody"></tbody>
+      </table>
+    </div>
+    <div id="lowStockEmpty" class="empty-row" style="display:none;">ไม่มีรายการที่ต่ำกว่า Min Stock</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Lot วัตถุดิบที่รอ QC</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Lot Number</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>วันที่รับ</th><th>Supplier</th></tr></thead>
+        <tbody id="qcPendingBody"></tbody>
+      </table>
+    </div>
+    <div id="qcPendingEmpty" class="empty-row" style="display:none;">ไม่มีรายการรอ QC</div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script>
+(async function(){
+  showLoading(true);
+  try {
+    const [rmRes, fgRes, roRes, qcRes] = await Promise.all([
+      db.from('rm_stock').select('qty_on_hand, rm_lots(status)').eq('rm_lots.status', 'available'),
+      db.from('fg_stock').select('qty_on_hand').gt('qty_on_hand', 0),
+      db.from('receive_orders').select('id').gte('receive_date', new Date().toISOString().slice(0,10)),
+      db.from('rm_lots').select('id, lot_number, initial_qty, unit, receive_date, materials(sku,name), suppliers(name)').eq('status','qc_pending').order('created_at')
+    ]);
+
+    document.getElementById('s-rmLots').textContent    = (rmRes.data||[]).filter(r=>r.rm_lots?.status==='available').length;
+    document.getElementById('s-qcPending').textContent = (qcRes.data||[]).length;
+    document.getElementById('s-fgLots').textContent    = (fgRes.data||[]).length;
+    document.getElementById('s-todayRO').textContent   = (roRes.data||[]).length;
+
+    // QC Pending table
+    const qcBody = document.getElementById('qcPendingBody');
+    const qcEmpty = document.getElementById('qcPendingEmpty');
+    if (!qcRes.data?.length) { qcEmpty.style.display='block'; }
+    else {
+      qcBody.innerHTML = qcRes.data.map(r=>`<tr>
+        <td><span class="lot-num">${r.lot_number}</span></td>
+        <td>${r.materials?.name||'-'}</td>
+        <td style="text-align:right;">${fmtQty(r.initial_qty)}</td>
+        <td>${r.unit}</td>
+        <td>${fmtDate(r.receive_date)}</td>
+        <td>${r.suppliers?.name||'-'}</td>
+      </tr>`).join('');
+    }
+
+    // Low stock
+    const { data: matData } = await db.from('materials').select('id,sku,name,unit,min_stock').eq('is_active',true).gt('min_stock',0);
+    if (matData?.length) {
+      const { data: stockData } = await db.from('rm_lots')
+        .select('material_id, rm_stock(qty_on_hand)').eq('status','available');
+      const stockByMat = {};
+      (stockData||[]).forEach(r=>{ stockByMat[r.material_id]=(stockByMat[r.material_id]||0)+(r.rm_stock?.qty_on_hand||0); });
+      const low = matData.filter(m=>(stockByMat[m.id]||0) < m.min_stock);
+      const lowBody = document.getElementById('lowStockBody');
+      if (!low.length) { document.getElementById('lowStockEmpty').style.display='block'; }
+      else {
+        lowBody.innerHTML = low.map(m=>`<tr>
+          <td><code>${m.sku}</code></td>
+          <td>${m.name}</td>
+          <td style="text-align:right;color:var(--red);font-weight:700;">${fmtQty(stockByMat[m.id]||0)}</td>
+          <td style="text-align:right;">${fmtQty(m.min_stock)}</td>
+          <td>${m.unit}</td>
+        </tr>`).join('');
+      }
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('โหลดข้อมูลไม่สำเร็จ', 'error');
+  } finally {
+    showLoading(false);
+  }
+})();
+</script>
+</body>
+</html>
