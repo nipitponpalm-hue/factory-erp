@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — Traceability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+.trace-box { background:var(--surface); border:1.5px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.trace-box-title { font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
+.trace-arrow { text-align:center; color:var(--green-deep); font-size:20px; margin:6px 0; }
+.trace-chain { padding:0 8px; }
+.trace-node { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; background:var(--bg); border-radius:8px; margin-bottom:6px; border-left:3px solid var(--green-deep); }
+.trace-node.rm { border-left-color:#3B82F6; }
+.trace-node.fg { border-left-color:#10B981; }
+.trace-node.do { border-left-color:#F59E0B; }
+.trace-node-icon { font-size:18px; margin-top:2px; }
+.trace-node-body { flex:1; }
+.trace-node-lot { font-size:13px; font-weight:700; color:var(--ink-deep); }
+.trace-node-sub { font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.6; }
+.mode-tabs { display:flex; gap:8px; margin-bottom:18px; }
+.mode-tab { padding:9px 20px; border-radius:8px; border:1.5px solid var(--line); background:transparent; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; transition:.15s; }
+.mode-tab.active { background:var(--green-deep); color:#fff; border-color:var(--green-deep); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    Traceability — ติดตามสินค้า
+  </div>
+
+  <div class="card">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabBackward" onclick="setMode('backward')">
+        🔍 Backward — FG/DO → RM → Supplier
+      </button>
+      <button class="mode-tab" id="tabForward" onclick="setMode('forward')">
+        🔎 Forward — RM → FG → ลูกค้า
+      </button>
+    </div>
+
+    <!-- BACKWARD: เริ่มจาก FG Lot หรือ DO -->
+    <div id="modeBackward">
+      <div class="row">
+        <div class="field-lg">
+          <label>ค้นหาด้วย FG Lot หรือเลขที่ใบจ่าย (DO)</label>
+          <input type="text" id="bwSearch" placeholder="เช่น FG260629001 หรือ DO260629001" style="width:100%;" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+          <button class="btn btn-primary" id="bwSearchBtn">ค้นหา</button>
+        </div>
+      </div>
+      <div id="bwSuggest" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- FORWARD: เริ่มจาก RM Lot -->
+    <div id="modeForward" style="display:none;">
+      <div class="row">
+        <div class="field-lg">
+          <label>ค้นหาด้วย RM Lot</label>
+          <input type="text" id="fwSearch" placeholder="เช่น RM260629001" style="width:100%;" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+          <button class="btn btn-primary" id="fwSearchBtn">ค้นหา</button>
+        </div>
+      </div>
+      <div id="fwSuggest" style="display:none;background:var(--surface);border:1.5px solid var(--line);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultWrap" style="display:none;">
+    <div class="card">
+      <div class="card-title" id="resultTitle">ผลการติดตาม</div>
+      <div class="trace-chain" id="traceChain"></div>
+    </div>
+  </div>
+
+  <div id="noResult" style="display:none;" class="card">
+    <div class="empty-row">ไม่พบข้อมูล</div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script>
+(function(){
+
+let mode = 'backward';
+
+window.setMode = function(m) {
+  mode = m;
+  document.getElementById('modeBackward').style.display = m==='backward'?'block':'none';
+  document.getElementById('modeForward').style.display  = m==='forward'?'block':'none';
+  document.getElementById('tabBackward').classList.toggle('active', m==='backward');
+  document.getElementById('tabForward').classList.toggle('active', m==='forward');
+  document.getElementById('resultWrap').style.display='none';
+  document.getElementById('noResult').style.display='none';
+};
+
+// ===== BACKWARD AUTOCOMPLETE =====
+let bwTimer;
+document.getElementById('bwSearch').addEventListener('input', e => {
+  clearTimeout(bwTimer);
+  const q = e.target.value.trim();
+  if (q.length < 2) { document.getElementById('bwSuggest').style.display='none'; return; }
+  bwTimer = setTimeout(()=>bwAutocomplete(q), 300);
+});
+
+async function bwAutocomplete(q) {
+  const [fgRes, doRes] = await Promise.all([
+    db.from('fg_lots').select('id,lot_number,products(name)').ilike('lot_number',`%${q}%`).limit(8),
+    db.from('dispatch_orders').select('id,do_number,customers(name)').ilike('do_number',`%${q}%`).limit(8),
+  ]);
+  const items = [
+    ...(fgRes.data||[]).map(r=>({ type:'fg', id:r.id, label:`🟩 ${r.lot_number}`, sub:r.products?.name||'' })),
+    ...(doRes.data||[]).map(r=>({ type:'do', id:r.id, label:`🟧 ${r.do_number}`, sub:r.customers?.name||'' })),
+  ];
+  const sug = document.getElementById('bwSuggest');
+  if (!items.length) { sug.style.display='none'; return; }
+  sug.innerHTML = items.map((it,i)=>`<div class="combo-item" style="padding:10px 14px;cursor:pointer;" data-idx="${i}">
+    <b>${it.label}</b> <span style="color:var(--ink-soft);font-size:12px;">${it.sub}</span>
+  </div>`).join('');
+  sug.style.display='block';
+  sug.querySelectorAll('.combo-item').forEach((el,i)=>{
+    el.addEventListener('click',()=>{
+      sug.style.display='none';
+      document.getElementById('bwSearch').value=items[i].label.replace(/^[^ ]+ /,'');
+      if (items[i].type==='fg') traceBackwardFromFG(items[i].id);
+      else traceBackwardFromDO(items[i].id);
+    });
+  });
+}
+
+document.getElementById('bwSearchBtn').addEventListener('click', async ()=>{
+  const q = document.getElementById('bwSearch').value.trim();
+  if (!q) return;
+  showLoading(true);
+  // ลองหา FG Lot ก่อน แล้วค่อย DO
+  const { data:fg } = await db.from('fg_lots').select('id,lot_number').ilike('lot_number',q).limit(1);
+  if (fg?.length) { await traceBackwardFromFG(fg[0].id); showLoading(false); return; }
+  const { data:doR } = await db.from('dispatch_orders').select('id,do_number').ilike('do_number',q).limit(1);
+  if (doR?.length) { await traceBackwardFromDO(doR[0].id); showLoading(false); return; }
+  showLoading(false);
+  document.getElementById('resultWrap').style.display='none';
+  document.getElementById('noResult').style.display='block';
+});
+
+// ===== BACKWARD: FG Lot → RM Lots → Suppliers =====
+async function traceBackwardFromFG(fgLotId) {
+  showLoading(true);
+  try {
+    const { data:fg } = await db.from('fg_lots')
+      .select('lot_number,mfg_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,production_date,operator)')
+      .eq('id',fgLotId).single();
+
+    // dispatch
+    const { data:dis } = await db.from('dispatch_items')
+      .select('qty,dispatch_orders(do_number,dispatch_date,customers(name))')
+      .eq('fg_lot_id',fgLotId);
+
+    // RM inputs ที่ใช้ผลิต
+    const { data:po } = await db.from('fg_lots').select('po_id').eq('id',fgLotId).single();
+    let rmInputs=[];
+    if (po?.po_id) {
+      const { data:inp } = await db.from('production_inputs')
+        .select('qty_used,rm_lots(lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number)))')
+        .eq('po_id',po.po_id);
+      rmInputs = inp||[];
+    }
+
+    renderBackwardFG(fg, rmInputs, dis||[]);
+  } finally { showLoading(false); }
+}
+
+function renderBackwardFG(fg, rmInputs, dispatches) {
+  document.getElementById('resultTitle').textContent=`Backward Trace — FG Lot: ${fg.lot_number}`;
+
+  let html = '';
+
+  // RM Nodes
+  if (rmInputs.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">📦 วัตถุดิบที่ใช้ผลิต</div>`;
+    rmInputs.forEach(r=>{
+      const lot=r.rm_lots;
+      const ro=lot?.receive_items?.[0]?.receive_orders;
+      html+=`<div class="trace-node rm">
+        <div class="trace-node-icon">🟦</div>
+        <div class="trace-node-body">
+          <div class="trace-node-lot">${lot?.lot_number||'-'}</div>
+          <div class="trace-node-sub">
+            วัตถุดิบ: ${lot?.materials?.name||'-'} (${lot?.materials?.sku||'-'})<br>
+            Supplier: <b>${lot?.suppliers?.name||'-'}</b>
+            ${ro?` &nbsp;|&nbsp; ใบรับ: ${ro.ro_number}`:''}<br>
+            วันรับ: ${lot?.receive_date?fmtDate(lot.receive_date):'-'}
+            ${lot?.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(lot.exp_date)}`:''}<br>
+            จำนวนที่ใช้: <b>${fmtQty(r.qty_used)} ${lot?.unit||''}</b>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+=`<div class="trace-arrow">↓</div>`;
+  }
+
+  // Production Node
+  const po=fg.production_orders;
+  if(po) {
+    html+=`<div class="trace-node" style="border-left-color:#8B5CF6;">
+      <div class="trace-node-icon">⚙️</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${po.po_number}</div>
+        <div class="trace-node-sub">ผลิตโดย: ${po.operator} &nbsp;|&nbsp; วันผลิต: ${fmtDT(po.production_date)}</div>
+      </div>
+    </div>`;
+    html+=`<div class="trace-arrow">↓</div>`;
+  }
+
+  // FG Node
+  html+=`<div class="trace-node fg">
+    <div class="trace-node-icon">🟩</div>
+    <div class="trace-node-body">
+      <div class="trace-node-lot">${fg.lot_number}</div>
+      <div class="trace-node-sub">
+        สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
+        MFG: ${fg.mfg_date?fmtDate(fg.mfg_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
+        จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${fg.status}" style="font-size:11px;">${fg.status}</span>
+      </div>
+    </div>
+  </div>`;
+
+  // Dispatch Nodes
+  if (dispatches.length) {
+    html+=`<div class="trace-arrow">↓</div>`;
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">🚚 การจ่ายสินค้า</div>`;
+    dispatches.forEach(d=>{
+      const doRec=d.dispatch_orders;
+      html+=`<div class="trace-node do">
+        <div class="trace-node-icon">🟧</div>
+        <div class="trace-node-body">
+          <div class="trace-node-lot">${doRec?.do_number||'-'}</div>
+          <div class="trace-node-sub">
+            ลูกค้า: <b>${doRec?.customers?.name||'-'}</b><br>
+            วันจ่าย: ${doRec?.dispatch_date?fmtDT(doRec.dispatch_date):'-'} &nbsp;|&nbsp; จำนวน: <b>${fmtQty(d.qty)} ${fg.unit}</b>
+          </div>
+        </div>
+      </div>`;
+    });
+  } else {
+    html+=`<div style="font-size:13px;color:var(--ink-soft);padding:10px 0;">ยังไม่มีการจ่ายสินค้า</div>`;
+  }
+
+  document.getElementById('traceChain').innerHTML=html;
+  document.getElementById('resultWrap').style.display='block';
+  document.getElementById('noResult').style.display='none';
+}
+
+// ===== BACKWARD: DO → FG Lots → RM =====
+async function traceBackwardFromDO(doId) {
+  const { data:doRec } = await db.from('dispatch_orders')
+    .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lot_id,fg_lots(id,lot_number))')
+    .eq('id',doId).single();
+
+  if (!doRec) { document.getElementById('noResult').style.display='block'; return; }
+
+  // แสดง DO overview แล้ว trace แต่ละ FG
+  document.getElementById('resultTitle').textContent=`Backward Trace — ใบจ่าย: ${doRec.do_number}`;
+  let html=`<div class="trace-node do" style="margin-bottom:12px;">
+    <div class="trace-node-icon">🟧</div>
+    <div class="trace-node-body">
+      <div class="trace-node-lot">${doRec.do_number}</div>
+      <div class="trace-node-sub">ลูกค้า: <b>${doRec.customers?.name||'-'}</b> &nbsp;|&nbsp; วันจ่าย: ${fmtDT(doRec.dispatch_date)}</div>
+    </div>
+  </div>
+  <div class="trace-arrow">↑ ย้อนหา</div>
+  <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">คลิก FG Lot เพื่อดู Trace ย้อนหลัง</div>`;
+
+  (doRec.dispatch_items||[]).forEach(it=>{
+    html+=`<div class="trace-node fg" style="cursor:pointer;" onclick="traceFGFromDO('${it.fg_lot_id}')">
+      <div class="trace-node-icon">🟩</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${it.fg_lots?.lot_number||'-'} <span style="font-size:11px;color:var(--green-deep);">→ คลิกเพื่อ Trace</span></div>
+        <div class="trace-node-sub">จำนวน: ${fmtQty(it.qty)}</div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('traceChain').innerHTML=html;
+  document.getElementById('resultWrap').style.display='block';
+  document.getElementById('noResult').style.display='none';
+}
+
+window.traceFGFromDO = async function(fgLotId) {
+  showLoading(true);
+  await traceBackwardFromFG(fgLotId);
+  showLoading(false);
+};
+
+// ===== FORWARD AUTOCOMPLETE =====
+let fwTimer;
+document.getElementById('fwSearch').addEventListener('input', e=>{
+  clearTimeout(fwTimer);
+  const q=e.target.value.trim();
+  if (q.length<2){ document.getElementById('fwSuggest').style.display='none'; return; }
+  fwTimer=setTimeout(()=>fwAutocomplete(q),300);
+});
+
+async function fwAutocomplete(q) {
+  const { data } = await db.from('rm_lots')
+    .select('id,lot_number,materials(name)')
+    .ilike('lot_number',`%${q}%`).limit(10);
+  const sug=document.getElementById('fwSuggest');
+  if (!data?.length){ sug.style.display='none'; return; }
+  sug.innerHTML=(data||[]).map((r,i)=>`<div class="combo-item" style="padding:10px 14px;cursor:pointer;" data-idx="${i}">
+    <b class="lot-num">${r.lot_number}</b> <span style="color:var(--ink-soft);font-size:12px;">${r.materials?.name||''}</span>
+  </div>`).join('');
+  sug.style.display='block';
+  sug.querySelectorAll('.combo-item').forEach((el,i)=>{
+    el.addEventListener('click',()=>{
+      sug.style.display='none';
+      document.getElementById('fwSearch').value=data[i].lot_number;
+      traceForwardFromRM(data[i].id);
+    });
+  });
+}
+
+document.getElementById('fwSearchBtn').addEventListener('click', async()=>{
+  const q=document.getElementById('fwSearch').value.trim();
+  if (!q) return;
+  showLoading(true);
+  const { data } = await db.from('rm_lots').select('id').ilike('lot_number',q).limit(1);
+  if (data?.length) { await traceForwardFromRM(data[0].id); }
+  else { document.getElementById('resultWrap').style.display='none'; document.getElementById('noResult').style.display='block'; }
+  showLoading(false);
+});
+
+// ===== FORWARD: RM → PO → FG → DO =====
+async function traceForwardFromRM(rmLotId) {
+  showLoading(true);
+  try {
+    const { data:rm } = await db.from('rm_lots')
+      .select('lot_number,receive_date,exp_date,initial_qty,unit,status,materials(sku,name),suppliers(name),receive_items(receive_orders(ro_number,receive_date))')
+      .eq('id',rmLotId).single();
+
+    // production inputs ที่ใช้ lot นี้
+    const { data:inputs } = await db.from('production_inputs')
+      .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),mfg_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
+      .eq('lot_id',rmLotId);
+
+    renderForwardRM(rm, inputs||[]);
+  } finally { showLoading(false); }
+}
+
+function renderForwardRM(rm, inputs) {
+  document.getElementById('resultTitle').textContent=`Forward Trace — RM Lot: ${rm.lot_number}`;
+  const ro=rm.receive_items?.[0]?.receive_orders;
+  let html=``;
+
+  // Supplier / RO
+  html+=`<div class="trace-node rm">
+    <div class="trace-node-icon">🟦</div>
+    <div class="trace-node-body">
+      <div class="trace-node-lot">${rm.lot_number}</div>
+      <div class="trace-node-sub">
+        วัตถุดิบ: ${rm.materials?.name||'-'} (${rm.materials?.sku||'-'})<br>
+        Supplier: <b>${rm.suppliers?.name||'-'}</b>${ro?` &nbsp;|&nbsp; ใบรับ: ${ro.ro_number}`:''}<br>
+        วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'} ${rm.exp_date?`&nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
+        จำนวน: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${rm.status}" style="font-size:11px;">${rm.status}</span>
+      </div>
+    </div>
+  </div>`;
+
+  if (!inputs.length) {
+    html+=`<div style="font-size:13px;color:var(--ink-soft);padding:10px 0;">ยังไม่มีการนำไปผลิต</div>`;
+  } else {
+    inputs.forEach(inp=>{
+      const po=inp.production_orders;
+      const fgLots=po?.fg_lots||[];
+      html+=`<div class="trace-arrow">↓</div>`;
+      html+=`<div class="trace-node" style="border-left-color:#8B5CF6;">
+        <div class="trace-node-icon">⚙️</div>
+        <div class="trace-node-body">
+          <div class="trace-node-lot">${po?.po_number||'-'}</div>
+          <div class="trace-node-sub">ผลิตโดย: ${po?.operator||'-'} &nbsp;|&nbsp; วันผลิต: ${po?.production_date?fmtDT(po.production_date):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(inp.qty_used)} ${rm.unit}</b></div>
+        </div>
+      </div>`;
+      fgLots.forEach(fg=>{
+        const dispatches=fg.dispatch_items||[];
+        html+=`<div class="trace-arrow">↓</div>`;
+        html+=`<div class="trace-node fg">
+          <div class="trace-node-icon">🟩</div>
+          <div class="trace-node-body">
+            <div class="trace-node-lot">${fg.lot_number}</div>
+            <div class="trace-node-sub">
+              สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
+              MFG: ${fg.mfg_date?fmtDate(fg.mfg_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
+              จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b>
+            </div>
+          </div>
+        </div>`;
+        if (dispatches.length) {
+          dispatches.forEach(d=>{
+            html+=`<div class="trace-arrow">↓</div>`;
+            html+=`<div class="trace-node do">
+              <div class="trace-node-icon">🟧</div>
+              <div class="trace-node-body">
+                <div class="trace-node-lot">${d.dispatch_orders?.do_number||'-'}</div>
+                <div class="trace-node-sub">ลูกค้า: <b>${d.dispatch_orders?.customers?.name||'-'}</b><br>วันจ่าย: ${d.dispatch_orders?.dispatch_date?fmtDT(d.dispatch_orders.dispatch_date):'-'} &nbsp;|&nbsp; จำนวน: <b>${fmtQty(d.qty)} ${fg.unit}</b></div>
+              </div>
+            </div>`;
+          });
+        } else {
+          html+=`<div style="font-size:13px;color:var(--ink-soft);padding:6px 0 6px 24px;">ยังไม่มีการจ่ายสินค้า FG Lot นี้</div>`;
+        }
+      });
+    });
+  }
+
+  document.getElementById('traceChain').innerHTML=html;
+  document.getElementById('resultWrap').style.display='block';
+  document.getElementById('noResult').style.display='none';
+}
+
+})();
+</script>
+</body>
+</html>
