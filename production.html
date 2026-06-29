@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — ผลิต</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="issue.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>เบิกวัตถุดิบ</a>
+    <a href="production.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    ผลิต (Production)
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">1</span> ข้อมูลใบผลิต</div>
+    <div class="row">
+      <div class="field">
+        <label>ผู้ผลิต *</label>
+        <div class="combo" id="oprComboWrap">
+          <input type="text" id="oprInput" placeholder="เลือกผู้ผลิต..." autocomplete="off">
+          <div class="combo-list" id="oprList"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>วันเวลาผลิต</label>
+        <input type="datetime-local" id="prodDate">
+      </div>
+      <div class="field-lg">
+        <label>หมายเหตุ</label>
+        <input type="text" id="poNote" placeholder="เช่น Batch เช้า, ล็อตพิเศษ">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">2</span> วัตถุดิบที่ใช้ผลิต (RM Inputs)</div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">เลือก Lot วัตถุดิบที่ใช้จริงในการผลิต (เบิกแล้วหรือยังไม่ได้เบิกก็ได้)</p>
+    <div class="row">
+      <div class="field-lg">
+        <label>วัตถุดิบ *</label>
+        <div class="combo" id="matComboWrap">
+          <input type="text" id="matInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ..." autocomplete="off">
+          <div class="combo-list" id="matList"></div>
+        </div>
+        <input type="hidden" id="matId">
+      </div>
+    </div>
+
+    <!-- Lot selector สำหรับ material ที่เลือก -->
+    <div id="lotSelectorWrap" style="display:none;margin-top:10px;">
+      <label style="font-size:13px;font-weight:600;">เลือก Lot <span id="matNameLabel" style="color:var(--green-deep);"></span></label>
+      <div id="lotSelectorList" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:14px;">
+      <table>
+        <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวนที่ใช้ *</th><th>หน่วย</th><th></th></tr></thead>
+        <tbody id="rmBody"></tbody>
+      </table>
+    </div>
+    <div id="rmEmpty" class="empty-row">ยังไม่มีวัตถุดิบ</div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">3</span> สินค้าสำเร็จรูป (FG Output)</div>
+    <div class="row">
+      <div class="field-lg">
+        <label>สินค้าสำเร็จรูป *</label>
+        <div class="combo" id="prodComboWrap">
+          <input type="text" id="prodInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อสินค้า..." autocomplete="off">
+          <div class="combo-list" id="prodList"></div>
+        </div>
+        <input type="hidden" id="prodId">
+      </div>
+      <div class="field">
+        <label>จำนวนที่ผลิตได้ *</label>
+        <input type="number" id="qtyProduced" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>หน่วย</label>
+        <input type="text" id="fgUnitDisplay" readonly placeholder="-">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>วันผลิต (MFG)</label>
+        <input type="date" id="mfgDate">
+      </div>
+      <div class="field">
+        <label>วันหมดอายุ (EXP)</label>
+        <input type="date" id="expDate">
+      </div>
+      <div class="field-lg">
+        <label>หมายเหตุ FG Lot</label>
+        <input type="text" id="fgNote" placeholder="เช่น ผ่าน QC, คุณภาพพิเศษ">
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM -->
+  <div class="card">
+    <div class="save-bar">
+      <button class="btn btn-ghost" id="resetBtn">ล้างทั้งหมด</button>
+      <button class="btn btn-primary" id="confirmBtn" disabled>✓ ยืนยันบันทึกการผลิต</button>
+    </div>
+  </div>
+
+  <!-- รายการล่าสุด -->
+  <div class="card">
+    <div class="card-title">ใบผลิตล่าสุด</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>เลขที่ใบผลิต</th><th>วันเวลา</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวนผลิต</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="poBody"></tbody>
+      </table>
+    </div>
+    <div id="poEmpty" class="empty-row">ยังไม่มีข้อมูล</div>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <div class="modal-title" id="detailTitle">รายละเอียดใบผลิต</div>
+      <button class="modal-close" onclick="document.getElementById('detailModal').classList.remove('show')">✕</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/lot.js"></script>
+<script>
+(function(){
+
+let operators=[], materials=[], products=[];
+let rmInputs = [];     // { lot_id, lot_number, material_name, material_sku, unit, qty_used, qty_on_hand, exp_date }
+let prodSelected = null;
+let matSelected = null;
+let allAvailableLots = [];  // rm_lots available
+
+// ===== LOAD MASTER =====
+async function loadMaster() {
+  const [oprRes, matRes, prodRes, lotRes] = await Promise.all([
+    db.from('operators').select('id,name').eq('is_active',true).order('name'),
+    db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
+    db.from('products').select('id,sku,name,unit').eq('is_active',true).order('sku'),
+    db.from('rm_lots')
+      .select('id,lot_number,material_id,receive_date,exp_date,unit,status,rm_stock(qty_on_hand),materials(sku,name)')
+      .in('status',['available','depleted'])
+      .order('receive_date', {ascending:true}),
+  ]);
+  operators = oprRes.data||[];
+  materials = matRes.data||[];
+  products  = prodRes.data||[];
+  allAvailableLots = (lotRes.data||[]).filter(l => l.rm_stock?.qty_on_hand > 0 || l.status === 'available');
+}
+
+// ===== COMBOS =====
+setupCombo({
+  inputEl: document.getElementById('oprInput'),
+  listEl:  document.getElementById('oprList'),
+  getItems(q){ q=(q||'').toLowerCase(); return operators.filter(o=>o.name.toLowerCase().includes(q)); },
+  renderItem: (o,i)=>`<div class="combo-item" data-idx="${i}">${o.name}</div>`,
+  onSelect(o){ document.getElementById('oprInput').value=o.name; checkConfirm(); }
+});
+
+setupCombo({
+  inputEl: document.getElementById('matInput'),
+  listEl:  document.getElementById('matList'),
+  getItems(q){
+    q=(q||'').toLowerCase();
+    const list = q ? materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : materials;
+    return list.slice(0,40);
+  },
+  renderItem: (m,i)=>`<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
+  onQueryChange(){ matSelected=null; document.getElementById('matId').value=''; document.getElementById('lotSelectorWrap').style.display='none'; },
+  onSelect(m){
+    matSelected=m;
+    document.getElementById('matInput').value=`${m.sku} — ${m.name}`;
+    document.getElementById('matId').value=m.id;
+    renderLotSelector(m);
+  }
+});
+
+setupCombo({
+  inputEl: document.getElementById('prodInput'),
+  listEl:  document.getElementById('prodList'),
+  getItems(q){
+    q=(q||'').toLowerCase();
+    const list = q ? products.filter(p=>p.sku.toLowerCase().includes(q)||p.name.toLowerCase().includes(q)) : products;
+    return list.slice(0,40);
+  },
+  renderItem: (p,i)=>`<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${p.sku}</span> ${p.name}</span><span style="color:var(--ink-soft);font-size:12px;">${p.unit}</span></div>`,
+  onQueryChange(){ prodSelected=null; document.getElementById('prodId').value=''; document.getElementById('fgUnitDisplay').value=''; },
+  onSelect(p){
+    prodSelected=p;
+    document.getElementById('prodInput').value=`${p.sku} — ${p.name}`;
+    document.getElementById('prodId').value=p.id;
+    document.getElementById('fgUnitDisplay').value=p.unit;
+    document.getElementById('qtyProduced').focus();
+    checkConfirm();
+  }
+});
+
+// ===== LOT SELECTOR =====
+function renderLotSelector(mat) {
+  const lots = allAvailableLots.filter(l=>l.material_id===mat.id);
+  const wrap = document.getElementById('lotSelectorWrap');
+  document.getElementById('matNameLabel').textContent = `${mat.sku} — ${mat.name}`;
+
+  if (!lots.length) {
+    document.getElementById('lotSelectorList').innerHTML = '<div style="color:var(--ink-soft);font-size:13px;padding:8px;">ไม่มี Lot ที่ใช้งานได้</div>';
+    wrap.style.display='block';
+    return;
+  }
+
+  document.getElementById('lotSelectorList').innerHTML = lots.map((l,i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1.5px solid var(--line);" id="lotsel-${l.id}">
+      <div style="flex:1;">
+        <span class="lot-num">${l.lot_number}</span>
+        <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(l.rm_stock?.qty_on_hand||0)} ${mat.unit}</span>
+        ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:6px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="margin:0;white-space:nowrap;font-size:13px;">จำนวนใช้</label>
+        <input type="number" step="0.01" min="0.01" placeholder="0.00"
+          id="lotqty-${l.id}" data-lot-id="${l.id}"
+          style="width:100px;" inputmode="decimal">
+        <span style="font-size:13px;color:var(--ink-soft);">${mat.unit}</span>
+        <button class="btn btn-primary btn-sm" onclick="addRmInput('${l.id}','${l.lot_number}','${mat.name}','${mat.sku}','${mat.unit}',${l.rm_stock?.qty_on_hand||0},'${l.exp_date||''}')">+ เพิ่ม</button>
+      </div>
+    </div>`).join('');
+  wrap.style.display='block';
+}
+
+window.addRmInput = function(lotId, lotNumber, matName, matSku, unit, qtyOnHand, expDate) {
+  const input = document.getElementById(`lotqty-${lotId}`);
+  const qty   = parseFloat(input?.value);
+  if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวนที่ใช้', 'error'); return; }
+
+  if (rmInputs.find(r=>r.lot_id===lotId)) {
+    showToast('Lot นี้ถูกเพิ่มแล้ว', 'error'); return;
+  }
+
+  rmInputs.push({ lot_id:lotId, lot_number:lotNumber, material_name:matName, material_sku:matSku, unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
+  renderRmTable();
+
+  // reset selector
+  document.getElementById('matInput').value='';
+  document.getElementById('matId').value='';
+  document.getElementById('lotSelectorWrap').style.display='none';
+  matSelected=null;
+  document.getElementById('matInput').focus();
+};
+
+// ===== RM TABLE =====
+function renderRmTable() {
+  const body  = document.getElementById('rmBody');
+  const empty = document.getElementById('rmEmpty');
+  if (!rmInputs.length) { body.innerHTML=''; empty.style.display='block'; checkConfirm(); return; }
+  empty.style.display='none';
+  body.innerHTML = rmInputs.map((r,i)=>`<tr>
+    <td><span class="lot-num">${r.lot_number}</span></td>
+    <td>${r.material_name} <span style="font-size:11px;color:var(--ink-soft);">(${r.material_sku})</span></td>
+    <td>${r.exp_date?fmtDate(r.exp_date):'-'}</td>
+    <td style="text-align:right;">
+      <input type="number" step="0.01" min="0.01" value="${r.qty_used}"
+        style="width:100px;text-align:right;" data-i="${i}"
+        onchange="updateRmQty(${i},this.value)">
+    </td>
+    <td>${r.unit}</td>
+    <td><button class="btn-icon" style="color:var(--red);" onclick="removeRm(${i})">✕</button></td>
+  </tr>`).join('');
+  checkConfirm();
+}
+
+window.updateRmQty = function(i, val) { rmInputs[i].qty_used = parseFloat(val)||0; checkConfirm(); };
+window.removeRm    = function(i) { rmInputs.splice(i,1); renderRmTable(); };
+
+// ===== CHECK CONFIRM =====
+function checkConfirm() {
+  const ok = document.getElementById('oprInput').value.trim()
+    && rmInputs.length > 0
+    && rmInputs.every(r=>r.qty_used>0)
+    && prodSelected
+    && parseFloat(document.getElementById('qtyProduced').value)>0;
+  document.getElementById('confirmBtn').disabled = !ok;
+}
+
+['qtyProduced','mfgDate','expDate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', checkConfirm);
+});
+
+// ===== CONFIRM =====
+document.getElementById('confirmBtn').addEventListener('click', async () => {
+  const operator   = document.getElementById('oprInput').value.trim();
+  const prodDateV  = document.getElementById('prodDate').value;
+  const poNote     = document.getElementById('poNote').value.trim()||null;
+  const qtyProd    = parseFloat(document.getElementById('qtyProduced').value);
+  const mfgDate    = document.getElementById('mfgDate').value||null;
+  const expDate    = document.getElementById('expDate').value||null;
+  const fgNote     = document.getElementById('fgNote').value.trim()||null;
+
+  document.getElementById('confirmBtn').disabled=true;
+  showLoading(true);
+  try {
+    const poNumber = await generateLotNumber('PO');
+    const prodAt   = prodDateV ? new Date(prodDateV).toISOString() : new Date().toISOString();
+
+    // 1. สร้าง production_order
+    const { data:po, error:poErr } = await db.from('production_orders')
+      .insert({ po_number:poNumber, operator, production_date:prodAt, note:poNote, status:'completed' })
+      .select('id').single();
+    if (poErr) throw poErr;
+
+    // 2. production_inputs (RM Lots ที่ใช้)
+    for (const rm of rmInputs) {
+      await db.from('production_inputs').insert({ po_id:po.id, lot_id:rm.lot_id, qty_used:rm.qty_used });
+
+      // หัก rm_stock
+      const newQty = rm.qty_on_hand - rm.qty_used;
+      await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty), updated_at:new Date().toISOString() }).eq('lot_id',rm.lot_id);
+      if (newQty <= 0) await db.from('rm_lots').update({status:'depleted'}).eq('id',rm.lot_id);
+
+      // บันทึก rm_transaction
+      await db.from('rm_transactions').insert({
+        lot_id:rm.lot_id, txn_type:'production', qty:-rm.qty_used,
+        ref_id:po.id, ref_type:'production_order', operator,
+        note:`ใช้ผลิต PO: ${poNumber}`
+      });
+    }
+
+    // 3. สร้าง FG Lot
+    const fgLotNumber = await generateLotNumber('FG');
+    const { data:fgLot, error:fgErr } = await db.from('fg_lots').insert({
+      lot_number: fgLotNumber,
+      product_id: prodSelected.id,
+      po_id:      po.id,
+      mfg_date:   mfgDate,
+      exp_date:   expDate,
+      initial_qty:qtyProd,
+      unit:       prodSelected.unit,
+      status:     'available',
+      note:       fgNote,
+    }).select('id').single();
+    if (fgErr) throw fgErr;
+
+    // 4. fg_stock
+    await db.from('fg_stock').insert({ lot_id:fgLot.id, qty_on_hand:qtyProd });
+
+    // 5. fg_transaction
+    await db.from('fg_transactions').insert({
+      lot_id:fgLot.id, txn_type:'production', qty:qtyProd,
+      ref_id:po.id, ref_type:'production_order', operator,
+      note:`ผลิตจาก PO: ${poNumber}`
+    });
+
+    showToast(`✅ บันทึกการผลิตสำเร็จ — PO: ${poNumber} | FG Lot: ${fgLotNumber}`);
+    rmInputs=[]; renderRmTable();
+    document.getElementById('oprInput').value='';
+    document.getElementById('poNote').value='';
+    document.getElementById('prodDate').value=toLocalInput();
+    document.getElementById('prodInput').value='';
+    document.getElementById('prodId').value='';
+    document.getElementById('fgUnitDisplay').value='';
+    document.getElementById('qtyProduced').value='';
+    document.getElementById('mfgDate').value='';
+    document.getElementById('expDate').value='';
+    document.getElementById('fgNote').value='';
+    prodSelected=null;
+    await loadRecentPO();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message,'error');
+    document.getElementById('confirmBtn').disabled=false;
+  } finally {
+    showLoading(false);
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  rmInputs=[]; renderRmTable();
+  document.getElementById('oprInput').value='';
+  document.getElementById('matInput').value='';
+  document.getElementById('prodInput').value='';
+  document.getElementById('prodId').value='';
+  document.getElementById('fgUnitDisplay').value='';
+  document.getElementById('qtyProduced').value='';
+  document.getElementById('mfgDate').value='';
+  document.getElementById('expDate').value='';
+  document.getElementById('fgNote').value='';
+  document.getElementById('poNote').value='';
+  document.getElementById('lotSelectorWrap').style.display='none';
+  prodSelected=null; matSelected=null;
+});
+
+// ===== RECENT PO =====
+async function loadRecentPO() {
+  const { data } = await db.from('production_orders')
+    .select('id,po_number,production_date,operator,status,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .order('created_at',{ascending:false}).limit(20);
+
+  const body=document.getElementById('poBody');
+  const empty=document.getElementById('poEmpty');
+  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  body.innerHTML = data.map(r=>{
+    const fg = r.fg_lots?.[0];
+    return `<tr>
+      <td><span class="lot-num">${r.po_number}</span></td>
+      <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.production_date)}</td>
+      <td>${r.operator}</td>
+      <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
+      <td>${fg?.products?`${fg.products.name}`:'-'}</td>
+      <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'} ${fg?.unit||''}</td>
+      <td><span class="status-badge s-completed">เสร็จสิ้น</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="showDetail('${r.id}','${r.po_number}')">รายละเอียด</button></td>
+    </tr>`;
+  }).join('');
+}
+
+window.showDetail = async function(poId, poNumber) {
+  document.getElementById('detailTitle').textContent=`ใบผลิต ${poNumber}`;
+  document.getElementById('detailBody').innerHTML='<div style="padding:24px;text-align:center;color:var(--ink-soft);">กำลังโหลด...</div>';
+  document.getElementById('detailModal').classList.add('show');
+
+  const [inRes, outRes] = await Promise.all([
+    db.from('production_inputs').select('qty_used,rm_lots(lot_number,materials(sku,name),unit,exp_date)').eq('po_id',poId),
+    db.from('fg_lots').select('lot_number,products(sku,name),initial_qty,unit,mfg_date,exp_date,status').eq('po_id',poId),
+  ]);
+
+  const inputs  = inRes.data||[];
+  const outputs = outRes.data||[];
+  document.getElementById('detailBody').innerHTML=`
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;">วัตถุดิบที่ใช้ (RM Inputs)</div>
+      <table><thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวนใช้</th><th>หน่วย</th></tr></thead>
+      <tbody>${inputs.map(r=>`<tr>
+        <td><span class="lot-num">${r.rm_lots?.lot_number||'-'}</span></td>
+        <td>${r.rm_lots?.materials?.name||'-'} (${r.rm_lots?.materials?.sku||'-'})</td>
+        <td>${r.rm_lots?.exp_date?fmtDate(r.rm_lots.exp_date):'-'}</td>
+        <td style="text-align:right;font-weight:700;">${fmtQty(r.qty_used)}</td>
+        <td>${r.rm_lots?.unit||'-'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;">FG Lot ที่ผลิตได้</div>
+      <table><thead><tr><th>FG Lot</th><th>สินค้า</th><th>MFG</th><th>EXP</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>สถานะ</th></tr></thead>
+      <tbody>${outputs.map(r=>`<tr>
+        <td><span class="lot-num">${r.lot_number}</span></td>
+        <td>${r.products?.name||'-'} (${r.products?.sku||'-'})</td>
+        <td>${r.mfg_date?fmtDate(r.mfg_date):'-'}</td>
+        <td>${r.exp_date?fmtDate(r.exp_date):'-'}</td>
+        <td style="text-align:right;font-weight:700;">${fmtQty(r.initial_qty)}</td>
+        <td>${r.unit}</td>
+        <td><span class="status-badge s-${r.status}">${r.status}</span></td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+};
+
+// ===== INIT =====
+(async function init(){
+  showLoading(true);
+  document.getElementById('prodDate').value=toLocalInput();
+  await loadMaster();
+  await loadRecentPO();
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>
