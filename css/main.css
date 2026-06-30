@@ -275,10 +275,81 @@ tr:hover td { background: #FAFAF6; }
 .fifo-row .lot-num { font-size: 13px; }
 .fifo-row input[type=number] { width: 100px; flex-shrink: 0; }
 
+/* ===== MOBILE TOPBAR (injected by utils.js) ===== */
+.mobile-topbar {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; height: 54px;
+  background: var(--green-deep); color: #fff;
+  align-items: center; gap: 12px; padding: 0 14px;
+  z-index: 60; box-shadow: 0 2px 8px rgba(38,34,23,.18);
+}
+.mobile-topbar .hamburger {
+  background: none; border: none; cursor: pointer; padding: 6px;
+  display: inline-flex; flex-direction: column; gap: 4px;
+}
+.mobile-topbar .hamburger span {
+  display: block; width: 22px; height: 2.5px; background: #fff; border-radius: 2px;
+}
+.mobile-topbar .mt-title { font-size: 15px; font-weight: 700; }
+
+.nav-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(38,34,23,.5); z-index: 49;
+}
+.nav-backdrop.show { display: block; }
+
 /* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .main { max-width: 100%; }
+}
+
 @media (max-width: 768px) {
-  .sidebar { display: none; }
-  .main { margin-left: 0; padding: 16px 12px 80px; }
+  body { display: block; }
+
+  .mobile-topbar { display: flex; }
+
+  /* Sidebar slides in from left */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .main {
+    margin-left: 0;
+    padding: 70px 14px 80px;
+    max-width: 100%;
+  }
+
+  .page-title { font-size: 18px; margin-bottom: 16px; }
+
+  /* Forms stack vertically */
   .row > .field, .row > .field-lg { flex: 1 1 100%; min-width: 0; }
-  input, select { font-size: 16px; }
+
+  /* 16px prevents iOS zoom-on-focus */
+  input, select, textarea { font-size: 16px; padding: 11px 12px; }
+
+  /* Bigger touch targets */
+  .btn { padding: 12px 18px; font-size: 15px; }
+  .btn-sm { padding: 9px 14px; font-size: 13.5px; }
+  .btn-icon { width: 38px; height: 38px; }
+  .nav-item { padding: 13px 16px; font-size: 15px; }
+
+  /* Cards & tables */
+  .card { padding: 14px; }
+  table { font-size: 13px; }
+  th, td { padding: 9px 8px; }
+
+  /* save-bar buttons full width & stacked */
+  .save-bar { flex-direction: column-reverse; }
+  .save-bar .btn { width: 100%; justify-content: center; }
+
+  .modal { padding: 18px; border-radius: 14px 14px 0 0; max-height: 92vh; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .toast { white-space: normal; max-width: 90vw; text-align: center; }
+}
+
+@media (max-width: 420px) {
+  .stat-grid { grid-template-columns: 1fr; }
 }

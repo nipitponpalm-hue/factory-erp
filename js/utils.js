@@ -78,6 +78,44 @@ function setupCombo({ inputEl, listEl, getItems, renderItem, onSelect, onQueryCh
   return { close };
 }
 
+// ===== MOBILE NAV (auto-injected on every page) =====
+function initMobileNav() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar || document.querySelector('.mobile-topbar')) return;
+
+  // หา title จาก page-title หรือ brand
+  const brandTitle = document.querySelector('.sidebar-brand h1')?.textContent || 'Factory ERP';
+
+  // topbar
+  const topbar = document.createElement('div');
+  topbar.className = 'mobile-topbar';
+  topbar.innerHTML = `
+    <button class="hamburger" aria-label="เมนู"><span></span><span></span><span></span></button>
+    <div class="mt-title">${brandTitle}</div>`;
+  document.body.insertBefore(topbar, document.body.firstChild);
+
+  // backdrop
+  const backdrop = document.createElement('div');
+  backdrop.className = 'nav-backdrop';
+  document.body.appendChild(backdrop);
+
+  function open()  { sidebar.classList.add('open');  backdrop.classList.add('show'); }
+  function close() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
+
+  topbar.querySelector('.hamburger').addEventListener('click', () => {
+    sidebar.classList.contains('open') ? close() : open();
+  });
+  backdrop.addEventListener('click', close);
+  // ปิดเมนูเมื่อคลิกลิงก์
+  sidebar.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', close));
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobileNav);
+} else {
+  initMobileNav();
+}
+
 // Export to Excel helper
 function exportExcel(wsData, sheetName, filename) {
   const ws = XLSX.utils.aoa_to_sheet(wsData);
