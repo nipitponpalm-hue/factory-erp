@@ -115,7 +115,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>เลขที่ใบผลิต</th><th>วันผลิต</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวนผลิต</th><th>หน่วย</th></tr></thead>
+          <thead><tr><th>เลขที่ใบผลิต</th><th>วันผลิต</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า (ผลผลิต)</th><th style="text-align:right;">จำนวนผลิต</th><th>หน่วย</th><th>วัตถุดิบที่ใช้</th><th style="text-align:right;">Yield %</th></tr></thead>
           <tbody id="productionBody"></tbody>
         </table>
       </div>
@@ -334,24 +334,57 @@ async function loadIssue(from, to) {
 // ===== PRODUCTION =====
 async function loadProduction(from, to) {
   const { data } = await db.from('production_orders')
-    .select('po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .select('id,po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct)')
     .gte('completed_at',from).lte('completed_at',to)
     .order('completed_at',{ascending:false});
-  reportData.production=data||[];
-  const body=document.getElementById('productionBody');
-  const empty=document.getElementById('productionEmpty');
-  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
-  body.innerHTML=data.map(r=>{
-    const fg=r.fg_lots?.[0];
+
+  if (!data?.length) {
+    reportData.production=[]; reportData.productionRows=[];
+    document.getElementById('productionBody').innerHTML='';
+    document.getElementById('productionEmpty').style.display='block';
+    return;
+  }
+
+  // ดึง production_inputs ทั้งหมดของ PO เหล่านี้
+  const poIds = data.map(r=>r.id);
+  const { data: inputs } = await db.from('production_inputs')
+    .select('production_order_id,qty_used,unit,rm_lots(lot_number,materials(name,sku))')
+    .in('production_order_id', poIds);
+
+  // map inputs by po id
+  const inputMap = {};
+  (inputs||[]).forEach(inp => {
+    const pid = inp.production_order_id;
+    if (!inputMap[pid]) inputMap[pid] = [];
+    inputMap[pid].push(inp);
+  });
+
+  reportData.production = data;
+  reportData.productionRows = data.map(r => ({
+    ...r, inputs: inputMap[r.id]||[]
+  }));
+
+  const body  = document.getElementById('productionBody');
+  const empty = document.getElementById('productionEmpty');
+  empty.style.display = 'none';
+  body.innerHTML = data.map(r => {
+    const fg   = r.fg_lots?.[0];
+    const inps = inputMap[r.id]||[];
+    const rmText = inps.length
+      ? inps.map(i=>`<span style="white-space:nowrap;">${i.rm_lots?.materials?.name||'?'} <b>${fmtQty(i.qty_used)}</b> ${i.unit}</span>`).join('<br>')
+      : '<span style="color:var(--ink-soft);">-</span>';
+    const yld = fg?.yield_pct;
+    const yColor = !yld ? 'var(--ink-soft)' : yld>=70 ? 'var(--green-deep)' : yld>=50 ? 'var(--amber)' : 'var(--red)';
     return `<tr>
       <td><span class="lot-num">${r.po_number}</span></td>
-      <td>${fmtDT(r.completed_at)}</td>
+      <td style="font-size:12.5px;">${fmtDT(r.completed_at)}</td>
       <td>${r.operator}</td>
       <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
-      <td>${fg?.products?.name||'-'} ${fg?.products?.sku?`(${fg.products.sku})`:''}</td>
+      <td>${fg?.products?.name||'-'}${fg?.products?.sku?` (${fg.products.sku})`:''}</td>
       <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'}</td>
       <td>${fg?.unit||'-'}</td>
+      <td style="font-size:12.5px;line-height:1.7;">${rmText}</td>
+      <td style="text-align:right;font-weight:800;font-size:14px;color:${yColor};">${yld!=null?yld+'%':'-'}</td>
     </tr>`;
   }).join('');
 }
@@ -569,8 +602,19 @@ window.exportTab = function(tab) {
       rows=(reportData.issueRows||[]).map(r=>[r.io_number,fmtDate(r.issue_date),r.operator,r.lot_number,r.material,r.sku,r.qty,r.unit,r.is_fifo?'FIFO':'Override']);
       filename='รายงานเบิกวัตถุดิบ'; break;
     case 'production':
-      headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','จำนวนผลิต','หน่วย'];
-      rows=(reportData.production||[]).map(r=>{const fg=r.fg_lots?.[0]; return [r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];});
+      headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า (ผลผลิต)','SKU','จำนวนผลิต','หน่วย','วัตถุดิบที่ใช้ (SKU)','วัตถุดิบที่ใช้','RM Lot','จำนวน RM','หน่วย RM','Yield %'];
+      rows=[];
+      (reportData.productionRows||[]).forEach(r=>{
+        const fg=r.fg_lots?.[0];
+        const base=[r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];
+        if (r.inputs?.length) {
+          r.inputs.forEach((inp,i)=>{
+            rows.push([...base, inp.rm_lots?.materials?.sku||'-', inp.rm_lots?.materials?.name||'-', inp.rm_lots?.lot_number||'-', inp.qty_used, inp.unit, i===0?(fg?.yield_pct!=null?fg.yield_pct+'%':'-'):'']);
+          });
+        } else {
+          rows.push([...base,'-','-','-','-','-',fg?.yield_pct!=null?fg.yield_pct+'%':'-']);
+        }
+      });
       filename='รายงานการผลิต'; break;
     case 'dispatch':
       headers=['เลขที่ใบจ่าย','วันจ่าย','ลูกค้า','ผู้จ่าย','FG Lot','สินค้า','SKU','จำนวน','หน่วย'];
