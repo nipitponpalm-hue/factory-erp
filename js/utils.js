@@ -78,6 +78,13 @@ function setupCombo({ inputEl, listEl, getItems, renderItem, onSelect, onQueryCh
   return { close };
 }
 
+// ===== PWA SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 // ===== MOBILE NAV (auto-injected on every page) =====
 function initMobileNav() {
   const sidebar = document.querySelector('.sidebar');
