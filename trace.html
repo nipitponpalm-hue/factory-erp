@@ -289,13 +289,25 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
 
 // ===== BACKWARD: DO → FG Lots → RM =====
 async function traceBackwardFromDO(doId) {
-  const { data:doRec } = await db.from('dispatch_orders')
-    .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lot_id,fg_lots(id,lot_number))')
-    .eq('id',doId).single();
+  const [doRes, itemsRes] = await Promise.all([
+    db.from('dispatch_orders').select('do_number,dispatch_date,operator,customers(name)').eq('id',doId).single(),
+    db.from('dispatch_items').select('qty,rm_lot_id,fg_lot_id').eq('do_id',doId),
+  ]);
 
-  if (!doRec) { document.getElementById('noResult').style.display='block'; return; }
+  if (!doRes.data) { document.getElementById('noResult').style.display='block'; return; }
+  const doRec  = doRes.data;
+  const items  = itemsRes.data||[];
 
-  // แสดง DO overview แล้ว trace แต่ละ FG
+  // ดึง lot info แยก
+  const rmIds = items.filter(i=>i.rm_lot_id).map(i=>i.rm_lot_id);
+  const fgIds = items.filter(i=>i.fg_lot_id).map(i=>i.fg_lot_id);
+  const [rmRes, fgRes] = await Promise.all([
+    rmIds.length ? db.from('rm_lots').select('id,lot_number,materials(name,sku)').in('id',rmIds) : {data:[]},
+    fgIds.length ? db.from('fg_lots').select('id,lot_number,products(name,sku)').in('id',fgIds) : {data:[]},
+  ]);
+  const rmMap = Object.fromEntries((rmRes.data||[]).map(r=>[r.id,r]));
+  const fgMap = Object.fromEntries((fgRes.data||[]).map(r=>[r.id,r]));
+
   document.getElementById('resultTitle').textContent=`Backward Trace — ใบจ่าย: ${doRec.do_number}`;
   let html=`<div class="trace-node do" style="margin-bottom:12px;">
     <div class="trace-node-icon">🟧</div>
@@ -304,18 +316,36 @@ async function traceBackwardFromDO(doId) {
       <div class="trace-node-sub">ลูกค้า: <b>${doRec.customers?.name||'-'}</b> &nbsp;|&nbsp; วันจ่าย: ${fmtDT(doRec.dispatch_date)}</div>
     </div>
   </div>
-  <div class="trace-arrow">↑ ย้อนหา</div>
-  <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">คลิก FG Lot เพื่อดู Trace ย้อนหลัง</div>`;
+  <div class="trace-arrow">↑ ย้อนหา</div>`;
 
-  (doRec.dispatch_items||[]).forEach(it=>{
-    html+=`<div class="trace-node fg" style="cursor:pointer;" onclick="traceFGFromDO('${it.fg_lot_id}')">
-      <div class="trace-node-icon">🟩</div>
-      <div class="trace-node-body">
-        <div class="trace-node-lot">${it.fg_lots?.lot_number||'-'} <span style="font-size:11px;color:var(--green-deep);">→ คลิกเพื่อ Trace</span></div>
-        <div class="trace-node-sub">จำนวน: ${fmtQty(it.qty)}</div>
-      </div>
-    </div>`;
-  });
+  if (!items.length) {
+    html+=`<div style="font-size:13px;color:var(--ink-soft);padding:8px;">ไม่พบรายการในใบจ่ายนี้</div>`;
+  } else {
+    items.forEach(it=>{
+      const isRm = !!it.rm_lot_id;
+      const lot  = isRm ? rmMap[it.rm_lot_id] : fgMap[it.fg_lot_id];
+      const prod = isRm ? lot?.materials : lot?.products;
+      if (isRm) {
+        // RM ขายตรง → แสดง RM node แล้ว trace ต่อได้
+        html+=`<div class="trace-node rm" style="cursor:pointer;" onclick="traceRMDirect('${it.rm_lot_id}')">
+          <div class="trace-node-icon">🟦</div>
+          <div class="trace-node-body">
+            <div class="trace-node-lot">${lot?.lot_number||'-'} <span style="font-size:11px;color:#3B82F6;">→ คลิกเพื่อ Trace ย้อนหลัง</span></div>
+            <div class="trace-node-sub">${prod?.name||'-'} (${prod?.sku||'-'}) &nbsp;|&nbsp; จำนวน: ${fmtQty(it.qty)} &nbsp;|&nbsp; <b>จ่ายตรง (ไม่แปรรูป)</b></div>
+          </div>
+        </div>`;
+      } else {
+        // FG → trace ต่อไปได้
+        html+=`<div class="trace-node fg" style="cursor:pointer;" onclick="traceFGFromDO('${it.fg_lot_id}')">
+          <div class="trace-node-icon">🟩</div>
+          <div class="trace-node-body">
+            <div class="trace-node-lot">${lot?.lot_number||'-'} <span style="font-size:11px;color:var(--green-deep);">→ คลิกเพื่อ Trace ย้อนหลัง</span></div>
+            <div class="trace-node-sub">${prod?.name||'-'} (${prod?.sku||'-'}) &nbsp;|&nbsp; จำนวน: ${fmtQty(it.qty)}</div>
+          </div>
+        </div>`;
+      }
+    });
+  }
 
   document.getElementById('traceChain').innerHTML=html;
   document.getElementById('resultWrap').style.display='block';
@@ -325,6 +355,33 @@ async function traceBackwardFromDO(doId) {
 window.traceFGFromDO = async function(fgLotId) {
   showLoading(true);
   await traceBackwardFromFG(fgLotId);
+  showLoading(false);
+};
+
+window.traceRMDirect = async function(rmLotId) {
+  showLoading(true);
+  // RM จ่ายตรง → แสดง RM node + Supplier
+  const { data:rm } = await db.from('rm_lots')
+    .select('lot_number,receive_date,exp_date,initial_qty,unit,status,materials(sku,name),suppliers(name),receive_items(receive_orders(ro_number))')
+    .eq('id',rmLotId).single();
+  if (!rm) { showLoading(false); return; }
+  const ro = rm.receive_items?.[0]?.receive_orders;
+  document.getElementById('resultTitle').textContent=`Backward Trace — RM Lot: ${rm.lot_number}`;
+  document.getElementById('traceChain').innerHTML=`
+    <div class="trace-node rm">
+      <div class="trace-node-icon">🟦</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${rm.lot_number}</div>
+        <div class="trace-node-sub">
+          วัตถุดิบ: ${rm.materials?.name||'-'} (${rm.materials?.sku||'-'})<br>
+          Supplier: <b>${rm.suppliers?.name||'-'}</b>${ro?` &nbsp;|&nbsp; ใบรับ: ${ro.ro_number}`:''}<br>
+          วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'}${rm.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
+          จำนวนทั้งหมด: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; <b style="color:var(--green-deep);">จ่ายตรงให้ลูกค้า (ไม่ผ่านการแปรรูป)</b>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('resultWrap').style.display='block';
+  document.getElementById('noResult').style.display='none';
   showLoading(false);
 };
 
