@@ -318,7 +318,7 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
     for (const item of cart) {
       if (item.type==='rm') {
         // จ่าย RM ตรง (คัดสวย ขายเลย)
-        await db.from('dispatch_items').insert({ do_id:doRec.id, rm_lot_id:item.id, fg_lot_id:null, qty:item.qty_dispatch });
+        await db.from('dispatch_items').insert({ do_id:doRec.id, rm_lot_id:item.id, fg_lot_id:null, qty:item.qty_dispatch, unit:item.unit });
         const newQty=item.qty_on_hand-item.qty_dispatch;
         await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('lot_id',item.id);
         if (newQty<=0) await db.from('rm_lots').update({status:'depleted'}).eq('id',item.id);
@@ -329,7 +329,7 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
         });
       } else {
         // จ่าย FG (แปรรูปแล้ว)
-        await db.from('dispatch_items').insert({ do_id:doRec.id, fg_lot_id:item.id, rm_lot_id:null, qty:item.qty_dispatch });
+        await db.from('dispatch_items').insert({ do_id:doRec.id, fg_lot_id:item.id, rm_lot_id:null, qty:item.qty_dispatch, unit:item.unit });
         const newQty=item.qty_on_hand-item.qty_dispatch;
         await db.from('fg_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('fg_lot_id',item.id);
         if (newQty<=0) await db.from('fg_lots').update({status:'depleted'}).eq('id',item.id);
