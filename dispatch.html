@@ -383,15 +383,40 @@ window.showDetail = async function(doId, doNumber){
   document.getElementById('detailBody').innerHTML='<div style="padding:24px;text-align:center;color:var(--ink-soft);">กำลังโหลด...</div>';
   document.getElementById('detailModal').classList.add('show');
 
-  const { data:doRec } = await db.from('dispatch_orders')
-    .select(`do_number,dispatch_date,operator,vehicle_no,note,customers(name,contact),
-      dispatch_items(qty,rm_lot_id,fg_lot_id,
-        rm_lots(lot_number,exp_date,unit,materials(sku,name)),
-        fg_lots(lot_number,exp_date,unit,products(sku,name)))`)
-    .eq('id',doId).single();
+  const [doRes, itemsRes] = await Promise.all([
+    db.from('dispatch_orders').select('do_number,dispatch_date,operator,vehicle_no,note,customers(name,contact)').eq('id',doId).single(),
+    db.from('dispatch_items').select('qty,rm_lot_id,fg_lot_id').eq('do_id',doId),
+  ]);
 
-  if (!doRec){ document.getElementById('detailBody').innerHTML='ไม่พบข้อมูล'; return; }
-  const items=doRec.dispatch_items||[];
+  if (!doRes.data){ document.getElementById('detailBody').innerHTML='ไม่พบข้อมูล'; return; }
+  const doRec = doRes.data;
+  const rawItems = itemsRes.data||[];
+
+  // ดึงข้อมูล lot แยก
+  const rmIds = rawItems.filter(i=>i.rm_lot_id).map(i=>i.rm_lot_id);
+  const fgIds = rawItems.filter(i=>i.fg_lot_id).map(i=>i.fg_lot_id);
+
+  const [rmRes, fgRes] = await Promise.all([
+    rmIds.length ? db.from('rm_lots').select('id,lot_number,exp_date,unit,materials(sku,name)').in('id',rmIds) : {data:[]},
+    fgIds.length ? db.from('fg_lots').select('id,lot_number,exp_date,unit,products(sku,name)').in('id',fgIds) : {data:[]},
+  ]);
+  const rmMap = Object.fromEntries((rmRes.data||[]).map(r=>[r.id,r]));
+  const fgMap = Object.fromEntries((fgRes.data||[]).map(r=>[r.id,r]));
+
+  const rows = rawItems.map(it=>{
+    const isRm = !!it.rm_lot_id;
+    const lot  = isRm ? rmMap[it.rm_lot_id] : fgMap[it.fg_lot_id];
+    const prod = isRm ? lot?.materials : lot?.products;
+    return `<tr>
+      <td>${isRm?'<span class="lot-badge-rm">RM</span>':'<span class="lot-badge-fg">FG</span>'}</td>
+      <td><span class="lot-num">${lot?.lot_number||'-'}</span></td>
+      <td>${prod?.name||'-'} (${prod?.sku||'-'})</td>
+      <td>${lot?.exp_date?fmtDate(lot.exp_date):'-'}</td>
+      <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
+      <td>${lot?.unit||'-'}</td>
+    </tr>`;
+  }).join('');
+
   document.getElementById('detailBody').innerHTML=`
     <div style="font-size:13.5px;margin-bottom:14px;">
       <b>ลูกค้า:</b> ${doRec.customers?.name||'-'} &nbsp;|&nbsp;
@@ -401,19 +426,7 @@ window.showDetail = async function(doId, doNumber){
       ${doRec.note?`<b>หมายเหตุ:</b> ${doRec.note}`:''}
     </div>
     <table><thead><tr><th>ประเภท</th><th>Lot</th><th>สินค้า/วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th></tr></thead>
-    <tbody>${items.map(it=>{
-      const isRm=!!it.rm_lot_id;
-      const lot=isRm?it.rm_lots:it.fg_lots;
-      const prod=isRm?lot?.materials:lot?.products;
-      return `<tr>
-        <td>${isRm?'<span class="lot-badge-rm">RM</span>':'<span class="lot-badge-fg">FG</span>'}</td>
-        <td><span class="lot-num">${lot?.lot_number||'-'}</span></td>
-        <td>${prod?.name||'-'} (${prod?.sku||'-'})</td>
-        <td>${lot?.exp_date?fmtDate(lot.exp_date):'-'}</td>
-        <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
-        <td>${lot?.unit||'-'}</td>
-      </tr>`;
-    }).join('')}</tbody></table>`;
+    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">ไม่มีรายการ</td></tr>'}</tbody></table>`;
 };
 
 (async function init(){
