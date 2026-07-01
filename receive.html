@@ -67,12 +67,12 @@
     </div>
     <div class="row" style="align-items:flex-end;">
       <div class="field-lg">
-        <label>PO ที่ต้องการรับ</label>
+        <label>PO ที่ต้องการรับ <span style="color:var(--red);">*</span></label>
         <select id="poSelect">
-          <option value="">— รับแบบไม่อ้างอิง PO —</option>
+          <option value="" disabled selected>— เลือก PO —</option>
         </select>
       </div>
-      <button class="btn btn-ghost btn-sm" id="clearPOBtn" style="margin-bottom:2px;display:none;">✕ ยกเลิก PO</button>
+      <button class="btn btn-ghost btn-sm" id="clearPOBtn" style="margin-bottom:2px;display:none;">✕ เปลี่ยน PO</button>
     </div>
     <div id="poItemsPreview" style="display:none;margin-top:12px;">
       <div style="font-size:12.5px;font-weight:600;color:var(--green-deep);margin-bottom:6px;">รายการใน PO:</div>
@@ -128,8 +128,8 @@
     <div id="poReceiveEmpty" class="empty-row" style="display:none;">ไม่มีรายการค้างรับใน PO นี้</div>
   </div>
 
-  <!-- STEP 2B: เพิ่มรายการเอง (แสดงเมื่อไม่มี PO) -->
-  <div class="card" id="manualAddCard">
+  <!-- STEP 2B: เพิ่มรายการเอง (ซ่อน — ใช้ PO เท่านั้น) -->
+  <div class="card" id="manualAddCard" style="display:none;">
     <div class="card-title"><span class="step-badge">2</span> เพิ่มรายการวัตถุดิบ</div>
     <div class="row">
       <div class="field-lg">
@@ -324,10 +324,8 @@ document.getElementById('poSelect').addEventListener('change', async function() 
   const poId = this.value;
   if (!poId) {
     selectedPO = null; selectedPOItems = [];
-    document.getElementById('poItemsPreview').style.display='none';
     document.getElementById('clearPOBtn').style.display='none';
     document.getElementById('poReceiveCard').style.display='none';
-    document.getElementById('manualAddCard').style.display='';
     checkConfirm();
     return;
   }
@@ -432,19 +430,15 @@ function renderCart() {
 }
 
 function checkConfirm() {
-  const base = document.getElementById('supId').value
+  const base = selectedPO
+    && document.getElementById('supId').value
     && document.getElementById('receiveDate').value
     && document.getElementById('oprInput').value.trim();
-  let hasItems;
-  if (selectedPO) {
-    const checks = document.querySelectorAll('.pr-check:checked');
-    hasItems = [...checks].some(cb => {
-      const qty = parseFloat(document.querySelector(`.pr-qty[data-id="${cb.dataset.id}"]`)?.value||0);
-      return qty > 0;
-    });
-  } else {
-    hasItems = cart.length > 0;
-  }
+  const checks = document.querySelectorAll('.pr-check:checked');
+  const hasItems = [...checks].some(cb => {
+    const qty = parseFloat(document.querySelector(`.pr-qty[data-id="${cb.dataset.id}"]`)?.value||0);
+    return qty > 0;
+  });
   document.getElementById('confirmBtn').disabled = !(base && hasItems);
 }
 
@@ -615,7 +609,6 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('poItemsPreview').style.display = 'none';
     document.getElementById('clearPOBtn').style.display = 'none';
     document.getElementById('poReceiveCard').style.display = 'none';
-    document.getElementById('manualAddCard').style.display = '';
     await loadMaster();
     await loadRecentRO();
 
