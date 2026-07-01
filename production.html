@@ -113,10 +113,17 @@
   </div>
 
   <!-- YIELD BOX -->
-  <div id="yieldBox" style="display:none;align-items:center;gap:16px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;">
-    <div style="font-size:36px;font-weight:800;" id="yieldVal">-</div>
+  <div id="yieldBox" style="display:none;align-items:center;gap:24px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;flex-wrap:wrap;">
+    <div style="text-align:center;">
+      <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:2px;">YIELD</div>
+      <div style="font-size:36px;font-weight:800;" id="yieldVal">-</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:2px;">LOSS</div>
+      <div style="font-size:36px;font-weight:800;" id="yieldLossVal">-</div>
+    </div>
     <div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">Yield การแปรรูป</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">การแปรรูป</div>
       <div style="font-size:12.5px;color:var(--ink-soft);" id="yieldDetail"></div>
       <div id="yieldWarn" style="display:none;font-size:12px;color:#92400E;font-weight:700;margin-top:2px;">⚠ Yield ต่ำกว่า 50% — กรุณาตรวจสอบ</div>
     </div>
@@ -234,10 +241,17 @@
     </div>
 
     <!-- LOSS BOX -->
-    <div id="rpLossBox" style="display:none;align-items:center;gap:16px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;">
-      <div style="font-size:36px;font-weight:800;" id="rpLossVal">-</div>
+    <div id="rpLossBox" style="display:none;align-items:center;gap:24px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;flex-wrap:wrap;">
+      <div style="text-align:center;">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:2px;">YIELD</div>
+        <div style="font-size:36px;font-weight:800;" id="rpYieldVal">-</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:2px;">LOSS</div>
+        <div style="font-size:36px;font-weight:800;" id="rpLossVal">-</div>
+      </div>
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">Loss จากการคัด</div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">คัด / รีแพ็ค</div>
         <div style="font-size:12.5px;color:var(--ink-soft);" id="rpLossDetail"></div>
       </div>
     </div>
@@ -462,13 +476,16 @@ function calcYield() {
   const qtyProd  = parseFloat(document.getElementById('qtyProduced').value)||0;
   const box      = document.getElementById('yieldBox');
   if (!totalRm || !qtyProd) { box.style.display='none'; return; }
-  const yld = (qtyProd / totalRm * 100).toFixed(1);
-  const low = parseFloat(yld) < 50;
+  const yld  = (qtyProd / totalRm * 100).toFixed(1);
+  const loss = (100 - parseFloat(yld)).toFixed(1);
+  const low  = parseFloat(yld) < 50;
   box.style.display = 'flex';
   box.style.background = low ? '#FEF3C7' : '#D1FAE5';
   box.style.borderColor = low ? '#F59E0B' : '#10B981';
   document.getElementById('yieldVal').textContent = `${yld}%`;
   document.getElementById('yieldVal').style.color = low ? '#92400E' : '#065F46';
+  document.getElementById('yieldLossVal').textContent = `${loss}%`;
+  document.getElementById('yieldLossVal').style.color = low ? '#92400E' : '#065F46';
   document.getElementById('yieldDetail').textContent = `RM รวม ${fmtQty(totalRm)} → FG ${fmtQty(qtyProd)}`;
   document.getElementById('yieldWarn').style.display = low ? 'inline' : 'none';
 }
@@ -778,9 +795,12 @@ window.switchTab = function(tab) {
     const loss    = totalIn - qtyOut;
     const lossPct = (loss/totalIn*100).toFixed(1);
     const high    = parseFloat(lossPct)>30;
+    const yieldPct = (qtyOut/totalIn*100).toFixed(1);
     box.style.display='flex';
     box.style.background   = high?'#FEF3C7':'#D1FAE5';
     box.style.borderColor  = high?'#F59E0B':'#10B981';
+    document.getElementById('rpYieldVal').textContent=`${yieldPct}%`;
+    document.getElementById('rpYieldVal').style.color=high?'#92400E':'#065F46';
     document.getElementById('rpLossVal').textContent=`${lossPct}%`;
     document.getElementById('rpLossVal').style.color=high?'#92400E':'#065F46';
     document.getElementById('rpLossDetail').textContent=`Input ${fmtQty(totalIn)} → Output ${fmtQty(qtyOut)} | สูญเสีย ${fmtQty(Math.max(0,loss))} ${rpInputs[0]?.unit||''}`;
