@@ -855,12 +855,14 @@ document.getElementById('resetConfirmOkBtn').addEventListener('click', async () 
       'receive_orders',
       'po_items',
       'purchase_orders',
-      'lot_sequences',
     ];
     for (const t of tables) {
       const { error } = await db.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
       if (error) console.warn(`${t}:`, error.message);
     }
+    // lot_sequences ใช้ prefix เป็น key ไม่มี id
+    const { error: seqErr } = await db.from('lot_sequences').delete().neq('prefix', '');
+    if (seqErr) console.warn('lot_sequences:', seqErr.message);
     showToast('✅ ล้างข้อมูลทดสอบเสร็จแล้ว — Master Data ยังอยู่ครบ');
   } catch(e) {
     showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
