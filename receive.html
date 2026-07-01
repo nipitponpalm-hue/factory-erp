@@ -658,12 +658,22 @@ async function openRODetail(roId) {
   showLoading(true);
   const [roRes, itemsRes] = await Promise.all([
     db.from('receive_orders').select('*,suppliers(code,name),purchase_orders(internal_ref,po_number)').eq('id',roId).single(),
-    db.from('receive_items').select('*,materials(sku,name)').eq('ro_id',roId).order('created_at'),
+    db.from('receive_items').select('*').eq('ro_id',roId),
   ]);
-  showLoading(false);
 
-  const ro = roRes.data;
-  const items = itemsRes.data||[];
+  const ro    = roRes.data;
+  let   items = itemsRes.data||[];
+
+  // ดึง materials แยก (หลีกเลี่ยง nullable FK join issue)
+  const matIds = [...new Set(items.map(i=>i.material_id).filter(Boolean))];
+  let matMap = {};
+  if (matIds.length) {
+    const { data: mats } = await db.from('materials').select('id,sku,name').in('id',matIds);
+    (mats||[]).forEach(m=>{ matMap[m.id]=m; });
+  }
+  items = items.map(i=>({ ...i, materials: matMap[i.material_id]||null }));
+
+  showLoading(false);
 
   document.getElementById('roDetailTitle').textContent = `ใบรับสินค้า ${ro.ro_number}`;
   document.getElementById('roDetailMeta').textContent =
