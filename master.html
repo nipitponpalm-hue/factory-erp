@@ -71,6 +71,17 @@
         <button class="btn btn-primary btn-sm" id="sup-save">บันทึก</button>
       </div>
     </div>
+    <div class="card" style="background:#F9F8F2;">
+      <div class="card-title">📂 Import Excel — Supplier</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="dlTemplate('suppliers')">⬇️ โหลด Template</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+          📄 เลือกไฟล์ Excel / CSV
+          <input type="file" id="imp-sup-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewImport('suppliers',this)">
+        </label>
+        <span id="imp-sup-name" style="font-size:12px;color:var(--ink-soft);"></span>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">รายชื่อ Supplier</div>
       <div class="table-wrap">
@@ -98,6 +109,17 @@
       <div class="save-bar">
         <button class="btn btn-ghost btn-sm" id="cus-clear">ล้าง</button>
         <button class="btn btn-primary btn-sm" id="cus-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card" style="background:#F9F8F2;">
+      <div class="card-title">📂 Import Excel — Customer</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="dlTemplate('customers')">⬇️ โหลด Template</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+          📄 เลือกไฟล์ Excel / CSV
+          <input type="file" id="imp-cus-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewImport('customers',this)">
+        </label>
+        <span id="imp-cus-name" style="font-size:12px;color:var(--ink-soft);"></span>
       </div>
     </div>
     <div class="card">
@@ -145,6 +167,17 @@
         <button class="btn btn-primary btn-sm" id="mat-save">บันทึก</button>
       </div>
     </div>
+    <div class="card" style="background:#F9F8F2;">
+      <div class="card-title">📂 Import Excel — วัตถุดิบ</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="dlTemplate('materials')">⬇️ โหลด Template</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+          📄 เลือกไฟล์ Excel / CSV
+          <input type="file" id="imp-mat-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewImport('materials',this)">
+        </label>
+        <span id="imp-mat-name" style="font-size:12px;color:var(--ink-soft);"></span>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">รายการวัตถุดิบ</div>
       <div class="table-wrap">
@@ -182,6 +215,17 @@
       <div class="save-bar">
         <button class="btn btn-ghost btn-sm" id="prd-clear">ล้าง</button>
         <button class="btn btn-primary btn-sm" id="prd-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card" style="background:#F9F8F2;">
+      <div class="card-title">📂 Import Excel — สินค้าสำเร็จรูป</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="dlTemplate('products')">⬇️ โหลด Template</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+          📄 เลือกไฟล์ Excel / CSV
+          <input type="file" id="imp-prd-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewImport('products',this)">
+        </label>
+        <span id="imp-prd-name" style="font-size:12px;color:var(--ink-soft);"></span>
       </div>
     </div>
     <div class="card">
@@ -229,6 +273,25 @@
   </div>
 </main>
 
+<!-- IMPORT PREVIEW MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <div class="modal-title" id="importModalTitle">ตรวจสอบข้อมูลก่อน Import</div>
+      <button class="modal-close" onclick="document.getElementById('importModal').classList.remove('show')">✕</button>
+    </div>
+    <p id="importSummary" style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;"></p>
+    <div class="table-wrap" style="max-height:360px;overflow-y:auto;">
+      <table id="importPreviewTable" style="font-size:12.5px;"></table>
+    </div>
+    <div id="importErrors" style="margin-top:10px;font-size:12.5px;color:var(--red);display:none;"></div>
+    <div class="save-bar" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="document.getElementById('importModal').classList.remove('show')">ยกเลิก</button>
+      <button class="btn btn-primary" id="importConfirmBtn">✅ ยืนยัน Import</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -242,6 +305,7 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/utils.js"></script>
 <script>
@@ -558,6 +622,147 @@ document.getElementById('opr-save').addEventListener('click', async () => {
   showToast('บันทึกสำเร็จ');
   document.getElementById('opr-clear').click();
   await loadOperators();
+});
+
+// ===== IMPORT / TEMPLATE =====
+const IMPORT_CONFIG = {
+  suppliers: {
+    title: 'Supplier',
+    fileId: 'imp-sup-file', nameId: 'imp-sup-name',
+    columns: ['code','name','contact','phone','address'],
+    headers: ['รหัส (code)*','ชื่อ (name)*','ผู้ติดต่อ (contact)','เบอร์โทร (phone)','ที่อยู่ (address)'],
+    sample:  [['SUP001','บริษัท ตัวอย่าง จำกัด','คุณสมชาย','081-234-5678','กรุงเทพฯ']],
+    required: ['code','name'],
+    table: 'suppliers', uniqueCol: 'code',
+  },
+  customers: {
+    title: 'Customer',
+    fileId: 'imp-cus-file', nameId: 'imp-cus-name',
+    columns: ['code','name','contact','phone','address'],
+    headers: ['รหัส (code)*','ชื่อ (name)*','ผู้ติดต่อ (contact)','เบอร์โทร (phone)','ที่อยู่ (address)'],
+    sample:  [['CUS001','ร้านตัวอย่าง','คุณมานี','089-999-0000','ปทุมธานี']],
+    required: ['code','name'],
+    table: 'customers', uniqueCol: 'code',
+  },
+  materials: {
+    title: 'วัตถุดิบ',
+    fileId: 'imp-mat-file', nameId: 'imp-mat-name',
+    columns: ['sku','name','category','unit','min_stock','shelf_life_days'],
+    headers: ['SKU*','ชื่อวัตถุดิบ*','หมวดหมู่ (category)*','หน่วย*','Min Stock','อายุ (วัน)'],
+    sample:  [['RM-001','มะม่วงดิบ','veg','กก.','0','7']],
+    required: ['sku','name','category','unit'],
+    table: 'materials', uniqueCol: 'sku',
+  },
+  products: {
+    title: 'สินค้าสำเร็จรูป',
+    fileId: 'imp-prd-file', nameId: 'imp-prd-name',
+    columns: ['sku','name','category','unit','shelf_life_days'],
+    headers: ['SKU*','ชื่อสินค้า*','หมวดหมู่ (category)*','หน่วย*','อายุ (วัน)'],
+    sample:  [['FG-001','มะม่วงปอกเปลือก','processed','กก.','3']],
+    required: ['sku','name','category','unit'],
+    table: 'products', uniqueCol: 'sku',
+  },
+};
+
+let importPending = null;
+
+window.dlTemplate = function(type) {
+  const cfg = IMPORT_CONFIG[type];
+  const wsData = [cfg.headers, ...cfg.sample];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, cfg.title);
+  XLSX.writeFile(wb, `template_${type}.xlsx`);
+};
+
+window.previewImport = function(type, input) {
+  const cfg = IMPORT_CONFIG[type];
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById(cfg.nameId).textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // หา header row (แถวที่มี column จริง)
+    const headerRowIdx = raw.findIndex(r =>
+      cfg.columns.some(c => r.map(x=>String(x).toLowerCase().trim()).includes(c))
+    );
+    if (headerRowIdx < 0) { showToast('ไม่พบ header ที่ถูกต้องในไฟล์', 'error'); return; }
+
+    const headerRow = raw[headerRowIdx].map(x => String(x).toLowerCase().trim());
+    const colIdx = cfg.columns.map(c => headerRow.indexOf(c));
+
+    const rows = [];
+    const errors = [];
+    for (let i = headerRowIdx + 1; i < raw.length; i++) {
+      const r = raw[i];
+      if (r.every(x => x === '' || x === null || x === undefined)) continue;
+      const obj = {};
+      cfg.columns.forEach((c, j) => { obj[c] = String(r[colIdx[j]] ?? '').trim(); });
+
+      // skip duplicate header rows
+      if (obj[cfg.columns[0]].toLowerCase() === cfg.columns[0]) continue;
+
+      const missing = cfg.required.filter(c => !obj[c]);
+      if (missing.length) { errors.push(`แถว ${i+1}: ขาด ${missing.join(', ')}`); continue; }
+
+      // type coerce
+      if (obj.min_stock !== undefined) obj.min_stock = parseFloat(obj.min_stock) || 0;
+      if (obj.shelf_life_days !== undefined) obj.shelf_life_days = parseInt(obj.shelf_life_days) || null;
+      obj.is_active = true;
+      rows.push(obj);
+    }
+
+    importPending = { type, rows, cfg };
+
+    // render preview table
+    const tbl = document.getElementById('importPreviewTable');
+    tbl.innerHTML = `<thead><tr>${cfg.columns.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${cfg.columns.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>`;
+
+    document.getElementById('importModalTitle').textContent = `ตรวจสอบข้อมูลก่อน Import — ${cfg.title}`;
+    document.getElementById('importSummary').textContent = `พบ ${rows.length} รายการที่จะ import${errors.length ? ` (ข้ามไป ${errors.length} แถวที่มีข้อผิดพลาด)` : ''}`;
+
+    const errEl = document.getElementById('importErrors');
+    if (errors.length) { errEl.style.display='block'; errEl.innerHTML = errors.slice(0,5).join('<br>') + (errors.length>5?`<br>...และอีก ${errors.length-5} รายการ`:''); }
+    else errEl.style.display = 'none';
+
+    document.getElementById('importModal').classList.add('show');
+    // reset file input
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+document.getElementById('importConfirmBtn').addEventListener('click', async () => {
+  if (!importPending || !importPending.rows.length) return;
+  const { type, rows, cfg } = importPending;
+  showLoading(true);
+  document.getElementById('importModal').classList.remove('show');
+
+  // upsert ทีละ batch
+  const BATCH = 50;
+  let done = 0, errors = 0;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH);
+    const { error } = await db.from(cfg.table).upsert(batch, { onConflict: cfg.uniqueCol, ignoreDuplicates: false });
+    if (error) { errors += batch.length; console.error(error); }
+    else done += batch.length;
+  }
+
+  showLoading(false);
+  importPending = null;
+  showToast(errors ? `Import ${done} รายการ (ผิดพลาด ${errors})` : `Import สำเร็จ ${done} รายการ`, errors ? 'warning' : 'success');
+
+  // reload ตารางที่เกี่ยวข้อง
+  if (type === 'suppliers')  await loadSuppliers();
+  if (type === 'customers')  await loadCustomers();
+  if (type === 'materials')  await loadMaterials();
+  if (type === 'products')   await loadProducts();
 });
 
 // expose for inline onclick
