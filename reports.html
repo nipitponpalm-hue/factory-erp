@@ -70,7 +70,7 @@
   <!-- REPORT TABS -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="tab-btn active" onclick="showTab('receive')">📥 การรับสินค้า</button>
-    <button class="tab-btn" onclick="showTab('issue')">📤 การเบิกวัตถุดิบ</button>
+    <button class="tab-btn" onclick="showTab('po')">📋 ใบสั่งซื้อ (PO)</button>
     <button class="tab-btn" onclick="showTab('production')">⚙️ การผลิต</button>
     <button class="tab-btn" onclick="showTab('dispatch')">🚚 การจ่ายสินค้า</button>
     <button class="tab-btn" onclick="showTab('stock')">📦 สต็อกปัจจุบัน</button>
@@ -95,20 +95,20 @@
     </div>
   </div>
 
-  <!-- TAB: ISSUE -->
-  <div id="tab-issue" class="tab-content" style="display:none;">
+  <!-- TAB: PO -->
+  <div id="tab-po" class="tab-content" style="display:none;">
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-        รายงานการเบิกวัตถุดิบ
-        <button class="btn btn-ghost btn-sm" onclick="exportTab('issue')">📥 Export Excel</button>
+        รายงานใบสั่งซื้อ (PO)
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('po')">📥 Export Excel</button>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>เลขที่ใบเบิก</th><th>วันเบิก</th><th>ผู้เบิก</th><th>RM Lot</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวนเบิก</th><th>หน่วย</th><th>FIFO</th></tr></thead>
-          <tbody id="issueBody"></tbody>
+          <thead><tr><th>เลขที่ PO</th><th>อ้างอิง (Internal)</th><th>วันที่สร้าง</th><th>Supplier</th><th>ผู้สร้าง</th><th>รายการ</th><th style="text-align:right;">สั่งรวม</th><th style="text-align:right;">รับแล้ว</th><th>สถานะ</th></tr></thead>
+          <tbody id="poRptBody"></tbody>
         </table>
       </div>
-      <div id="issueEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+      <div id="poRptEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
     </div>
   </div>
 
@@ -272,7 +272,7 @@ async function loadAll() {
   try {
     await Promise.all([
       loadReceive(from, toEnd),
-      loadIssue(from, toEnd),
+      loadPO(from, toEnd),
       loadProduction(from, toEnd),
       loadDispatch(from, toEnd),
       loadStock(),
@@ -306,35 +306,34 @@ async function loadReceive(from, to) {
 }
 
 // ===== ISSUE =====
-async function loadIssue(from, to) {
-  const { data } = await db.from('issue_orders')
-    .select('io_number,issue_date,operator,issue_items(qty_issued,is_fifo,rm_lots(lot_number,materials(sku,name),unit))')
-    .gte('issue_date',from).lte('issue_date',to)
-    .order('issue_date',{ascending:false});
-  reportData.issue = data||[];
-  const rows=[];
-  (data||[]).forEach(io=>{
-    (io.issue_items||[]).forEach(it=>{
-      rows.push({ io_number:io.io_number, issue_date:io.issue_date, operator:io.operator,
-        lot_number:it.rm_lots?.lot_number||'-', material:it.rm_lots?.materials?.name||'-',
-        sku:it.rm_lots?.materials?.sku||'-', qty:it.qty_issued, unit:it.rm_lots?.unit||'-', is_fifo:it.is_fifo });
-    });
-  });
-  reportData.issueRows=rows;
-  const body=document.getElementById('issueBody');
-  const empty=document.getElementById('issueEmpty');
-  if (!rows.length){ body.innerHTML=''; empty.style.display='block'; return; }
+async function loadPO(from, to) {
+  const { data } = await db.from('purchase_orders')
+    .select('internal_ref,po_number,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name))')
+    .gte('created_at', from).lte('created_at', to+'T23:59:59')
+    .order('created_at',{ascending:false});
+  reportData.po = data||[];
+  const body=document.getElementById('poRptBody');
+  const empty=document.getElementById('poRptEmpty');
+  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-  body.innerHTML=rows.map(r=>`<tr>
-    <td><span class="lot-num">${r.io_number}</span></td>
-    <td>${fmtDate(r.issue_date)}</td>
-    <td>${r.operator}</td>
-    <td><span class="lot-num">${r.lot_number}</span></td>
-    <td>${r.material} (${r.sku})</td>
-    <td style="text-align:right;font-weight:700;">${fmtQty(r.qty)}</td>
-    <td>${r.unit}</td>
-    <td>${r.is_fifo?'<span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 7px;border-radius:5px;font-weight:700;">FIFO</span>':'<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:5px;font-weight:700;">Override</span>'}</td>
-  </tr>`).join('');
+  const statusLabel = { open:'เปิด', partial:'รับบางส่วน', closed:'ปิดแล้ว' };
+  const statusClass = { open:'s-confirmed', partial:'s-pending', closed:'s-completed' };
+  body.innerHTML=(data||[]).map(p=>{
+    const totalOrdered  = (p.po_items||[]).reduce((s,i)=>s+(i.qty_ordered||0),0);
+    const totalReceived = (p.po_items||[]).reduce((s,i)=>s+(i.qty_received||0),0);
+    const unit = p.po_items?.[0]?.unit||'';
+    return `<tr>
+      <td><span class="lot-num">${p.po_number||'-'}</span></td>
+      <td><span class="lot-num">${p.internal_ref}</span></td>
+      <td>${fmtDate(p.created_at)}</td>
+      <td>${p.suppliers?.name||'-'}</td>
+      <td>${p.created_by||'-'}</td>
+      <td style="text-align:center;">${p.po_items?.length||0}</td>
+      <td style="text-align:right;font-weight:600;">${fmtQty(totalOrdered)} ${unit}</td>
+      <td style="text-align:right;font-weight:600;color:var(--green-deep);">${fmtQty(totalReceived)} ${unit}</td>
+      <td><span class="status-badge ${statusClass[p.status]||''}">${statusLabel[p.status]||p.status}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ===== PRODUCTION =====
@@ -603,10 +602,15 @@ window.exportTab = function(tab) {
       headers=['เลขที่ใบรับ','วันรับ','Supplier','ผู้รับ','จำนวนรายการ'];
       rows=(reportData.receive||[]).map(r=>[r.ro_number,fmtDate(r.receive_date),r.suppliers?.name,r.operator,r.receive_items?.length||0]);
       filename='รายงานรับสินค้า'; break;
-    case 'issue':
-      headers=['เลขที่ใบเบิก','วันเบิก','ผู้เบิก','RM Lot','วัตถุดิบ','SKU','จำนวนเบิก','หน่วย','FIFO'];
-      rows=(reportData.issueRows||[]).map(r=>[r.io_number,fmtDate(r.issue_date),r.operator,r.lot_number,r.material,r.sku,r.qty,r.unit,r.is_fifo?'FIFO':'Override']);
-      filename='รายงานเบิกวัตถุดิบ'; break;
+    case 'po':
+      headers=['เลขที่ PO','อ้างอิง (Internal)','วันที่สร้าง','Supplier','ผู้สร้าง','จำนวนรายการ','สั่งรวม','รับแล้ว','สถานะ'];
+      rows=(reportData.po||[]).map(p=>{
+        const totalOrdered  = (p.po_items||[]).reduce((s,i)=>s+(i.qty_ordered||0),0);
+        const totalReceived = (p.po_items||[]).reduce((s,i)=>s+(i.qty_received||0),0);
+        const statusLabel = { open:'เปิด', partial:'รับบางส่วน', closed:'ปิดแล้ว' };
+        return [p.po_number||'-',p.internal_ref,fmtDate(p.created_at),p.suppliers?.name||'-',p.created_by||'-',p.po_items?.length||0,totalOrdered,totalReceived,statusLabel[p.status]||p.status];
+      });
+      filename='รายงานใบสั่งซื้อ'; break;
     case 'production':
       headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า (ผลผลิต)','SKU','จำนวนผลิต','หน่วย','วัตถุดิบที่ใช้ (SKU)','วัตถุดิบที่ใช้','RM Lot','จำนวน RM','หน่วย RM','Yield %'];
       rows=[];
