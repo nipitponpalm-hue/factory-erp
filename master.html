@@ -272,7 +272,35 @@
       <div id="opr-empty" class="empty-row">ยังไม่มีข้อมูล</div>
     </div>
   </div>
+
+  <!-- DANGER ZONE -->
+  <div class="card" style="border:2px solid #FCA5A5;margin-top:32px;">
+    <div class="card-title" style="color:#DC2626;">⚠️ Danger Zone — ล้างข้อมูลทดสอบ</div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">
+      ลบข้อมูล Transaction ทั้งหมด (PO, รับสินค้า, QC, คลัง, ผลิต, คัด/รีแพ็ค) แต่<b>เก็บ Master Data</b> (SKU, Supplier, สินค้า, Operator) ไว้ครบ
+    </p>
+    <button class="btn" id="resetTestDataBtn" style="background:#DC2626;color:#fff;font-weight:700;">🗑 ล้างข้อมูลทดสอบทั้งหมด</button>
+  </div>
 </main>
+
+<!-- CONFIRM RESET MODAL -->
+<div class="modal-overlay" id="resetConfirmOverlay" style="display:none;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <div class="modal-title" style="color:#DC2626;">⚠️ ยืนยันการล้างข้อมูล</div>
+      <button class="modal-close" id="resetCancelBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;margin-bottom:16px;">การกระทำนี้จะ<b>ลบข้อมูล transaction ทั้งหมดอย่างถาวร</b> และไม่สามารถกู้คืนได้</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:20px;">พิมพ์ <b style="color:#DC2626;">RESET</b> เพื่อยืนยัน</p>
+      <input type="text" id="resetConfirmInput" placeholder="พิมพ์ RESET" style="margin-bottom:16px;border-color:#FCA5A5;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost" id="resetCancelBtn2">ยกเลิก</button>
+        <button class="btn" id="resetConfirmOkBtn" disabled style="background:#DC2626;color:#fff;font-weight:700;">ล้างข้อมูลเลย</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- IMPORT PREVIEW MODAL -->
 <div class="modal-overlay" id="importModal">
@@ -787,6 +815,59 @@ window.toggleOperator = toggleOperator;
 })();
 
 })();
+
+// ===== RESET TEST DATA =====
+document.getElementById('resetTestDataBtn').addEventListener('click', () => {
+  document.getElementById('resetConfirmInput').value = '';
+  document.getElementById('resetConfirmOkBtn').disabled = true;
+  document.getElementById('resetConfirmOverlay').style.display = 'flex';
+});
+
+document.getElementById('resetConfirmInput').addEventListener('input', function() {
+  document.getElementById('resetConfirmOkBtn').disabled = this.value.trim() !== 'RESET';
+});
+
+['resetCancelBtn','resetCancelBtn2'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    document.getElementById('resetConfirmOverlay').style.display = 'none';
+  });
+});
+
+document.getElementById('resetConfirmOkBtn').addEventListener('click', async () => {
+  document.getElementById('resetConfirmOverlay').style.display = 'none';
+  showLoading(true);
+  try {
+    // ลบตามลำดับ FK (child → parent)
+    const tables = [
+      'repack_outputs',
+      'repack_inputs',
+      'repack_orders',
+      'fg_transactions',
+      'fg_stock',
+      'fg_lots',
+      'production_inputs',
+      'production_orders',
+      'rm_transactions',
+      'rm_stock',
+      'rm_lots',
+      'qc_results',
+      'receive_items',
+      'receive_orders',
+      'po_items',
+      'purchase_orders',
+      'lot_sequences',
+    ];
+    for (const t of tables) {
+      const { error } = await db.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) console.warn(`${t}:`, error.message);
+    }
+    showToast('✅ ล้างข้อมูลทดสอบเสร็จแล้ว — Master Data ยังอยู่ครบ');
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
 </script>
 </body>
 </html>
