@@ -12,6 +12,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Factory ERP">
 <link rel="apple-touch-icon" href="/icons/icon-192.png"><link rel="stylesheet" href="css/main.css">
+<style>
+.po-recv-row { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; transition:opacity .2s; }
+.po-recv-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
+.po-recv-check { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.po-recv-check input[type=checkbox] { width:16px; height:16px; accent-color:var(--green-deep); cursor:pointer; }
+.pr-matname { font-size:14px; }
+.pr-remain { font-size:12.5px; color:var(--ink-soft); white-space:nowrap; }
+.po-recv-inputs { display:flex; gap:10px; flex-wrap:wrap; }
+.po-recv-inputs .field { min-width:120px; flex:1; margin:0; }
+.po-recv-inputs label { font-size:11.5px; margin-bottom:3px; }
+.po-recv-inputs input { font-size:13.5px; padding:6px 8px; }
+</style>
 </head>
 <body>
 
@@ -109,8 +121,15 @@
     </div>
   </div>
 
-  <!-- STEP 2: เพิ่มรายการ -->
-  <div class="card">
+  <!-- STEP 2A: รับตาม PO (แสดงเมื่อเลือก PO) -->
+  <div class="card" id="poReceiveCard" style="display:none;">
+    <div class="card-title"><span class="step-badge">2</span> รายการที่จะรับ (ตาม PO)</div>
+    <div id="poReceiveRows"></div>
+    <div id="poReceiveEmpty" class="empty-row" style="display:none;">ไม่มีรายการค้างรับใน PO นี้</div>
+  </div>
+
+  <!-- STEP 2B: เพิ่มรายการเอง (แสดงเมื่อไม่มี PO) -->
+  <div class="card" id="manualAddCard">
     <div class="card-title"><span class="step-badge">2</span> เพิ่มรายการวัตถุดิบ</div>
     <div class="row">
       <div class="field-lg">
@@ -220,12 +239,61 @@ function renderPOSelect() {
     + openPOs.map(p=>`<option value="${p.id}">${p.internal_ref}${p.po_number?' / '+p.po_number:''} — ${p.suppliers?.name||''}</option>`).join('');
 }
 
+function renderPOReceiveRows() {
+  const wrap  = document.getElementById('poReceiveRows');
+  const empty = document.getElementById('poReceiveEmpty');
+  const pending = selectedPOItems.filter(it => (it.qty_ordered - it.qty_received) > 0);
+  if (!pending.length) { wrap.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  wrap.innerHTML = pending.map(it => {
+    const remain = parseFloat((it.qty_ordered - it.qty_received).toFixed(4));
+    return `<div class="po-recv-row" data-id="${it.id}">
+      <div class="po-recv-header">
+        <label class="po-recv-check">
+          <input type="checkbox" class="pr-check" data-id="${it.id}" checked>
+          <span class="pr-matname"><b>${it.materials?.name||'-'}</b> <span class="lot-num">${it.materials?.sku||''}</span></span>
+        </label>
+        <span class="pr-remain">คงเหลือ <b>${fmtQty(remain)}</b> ${it.unit}</span>
+      </div>
+      <div class="po-recv-inputs">
+        <div class="field">
+          <label>รับ (${it.unit})</label>
+          <input type="number" class="pr-qty" data-id="${it.id}" data-remain="${remain}" step="0.01" min="0" value="${remain}" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Supplier Lot</label>
+          <input type="text" class="pr-lot" data-id="${it.id}" placeholder="ถ้ามี">
+        </div>
+        <div class="field">
+          <label>วันผลิต (MFG)</label>
+          <input type="date" class="pr-mfg" data-id="${it.id}">
+        </div>
+        <div class="field">
+          <label>วันหมดอายุ (EXP)</label>
+          <input type="date" class="pr-exp" data-id="${it.id}">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  // toggle row dim when unchecked
+  wrap.querySelectorAll('.pr-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.po-recv-row').style.opacity = cb.checked ? '1' : '0.4';
+      checkConfirm();
+    });
+  });
+  wrap.querySelectorAll('.pr-qty').forEach(inp => inp.addEventListener('input', checkConfirm));
+}
+
 document.getElementById('poSelect').addEventListener('change', async function() {
   const poId = this.value;
   if (!poId) {
     selectedPO = null; selectedPOItems = [];
     document.getElementById('poItemsPreview').style.display='none';
     document.getElementById('clearPOBtn').style.display='none';
+    document.getElementById('poReceiveCard').style.display='none';
+    document.getElementById('manualAddCard').style.display='';
+    checkConfirm();
     return;
   }
   showLoading(true);
@@ -244,20 +312,11 @@ document.getElementById('poSelect').addEventListener('change', async function() 
     document.getElementById('supId').value = sup.id;
   }
 
-  // show preview
-  document.getElementById('poItemsPreview').style.display='block';
   document.getElementById('clearPOBtn').style.display='';
-  document.getElementById('poPreviewBody').innerHTML = selectedPOItems.map(it=>{
-    const remain = it.qty_ordered - it.qty_received;
-    const color = remain<=0?'var(--green)':remain<it.qty_ordered?'var(--amber)':'var(--ink)';
-    return `<tr>
-      <td>${it.materials?.name||'-'} <span class="lot-num" style="font-size:11px;">${it.materials?.sku||''}</span></td>
-      <td style="text-align:right;">${fmtQty(it.qty_ordered)}</td>
-      <td style="text-align:right;color:var(--green-deep);font-weight:700;">${fmtQty(it.qty_received)}</td>
-      <td style="text-align:right;font-weight:700;color:${color};">${fmtQty(Math.max(0,remain))}</td>
-      <td>${it.unit}</td>
-    </tr>`;
-  }).join('');
+  document.getElementById('poItemsPreview').style.display='none';
+  document.getElementById('manualAddCard').style.display='none';
+  document.getElementById('poReceiveCard').style.display='';
+  renderPOReceiveRows();
   checkConfirm();
 });
 
@@ -338,11 +397,20 @@ function renderCart() {
 }
 
 function checkConfirm() {
-  const ok = document.getElementById('supId').value
+  const base = document.getElementById('supId').value
     && document.getElementById('receiveDate').value
-    && document.getElementById('oprInput').value.trim()
-    && cart.length > 0;
-  document.getElementById('confirmBtn').disabled = !ok;
+    && document.getElementById('oprInput').value.trim();
+  let hasItems;
+  if (selectedPO) {
+    const checks = document.querySelectorAll('.pr-check:checked');
+    hasItems = [...checks].some(cb => {
+      const qty = parseFloat(document.querySelector(`.pr-qty[data-id="${cb.dataset.id}"]`)?.value||0);
+      return qty > 0;
+    });
+  } else {
+    hasItems = cart.length > 0;
+  }
+  document.getElementById('confirmBtn').disabled = !(base && hasItems);
 }
 
 document.getElementById('receiveDate').addEventListener('change', checkConfirm);
@@ -387,6 +455,30 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
   const operator    = document.getElementById('oprInput').value.trim();
   const vehicleNo   = document.getElementById('vehicleNo').value.trim()||null;
   const roNote      = document.getElementById('roNote').value.trim()||null;
+
+  // ถ้าเลือก PO ให้สร้าง cart จาก PO rows ที่ check ไว้
+  if (selectedPO) {
+    cart = [];
+    document.querySelectorAll('.pr-check:checked').forEach(cb => {
+      const id = cb.dataset.id;
+      const qty = parseFloat(document.querySelector(`.pr-qty[data-id="${id}"]`)?.value||0);
+      if (!qty || qty <= 0) return;
+      const poItem = selectedPOItems.find(p=>p.id===id);
+      if (!poItem) return;
+      cart.push({
+        material_id:  poItem.material_id,
+        sku:          poItem.materials?.sku||'',
+        name:         poItem.materials?.name||'',
+        unit:         poItem.unit,
+        qty,
+        supplier_lot: document.querySelector(`.pr-lot[data-id="${id}"]`)?.value.trim()||null,
+        mfg_date:     document.querySelector(`.pr-mfg[data-id="${id}"]`)?.value||null,
+        exp_date:     document.querySelector(`.pr-exp[data-id="${id}"]`)?.value||null,
+        note:         null,
+        _poItemId:    id,
+      });
+    });
+  }
 
   if (!supId || !receiveDate || !operator || !cart.length) return;
 
@@ -452,7 +544,9 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
       // อัปเดต qty_received ใน po_items
       if (selectedPO) {
-        const poItem = selectedPOItems.find(p=>p.material_id===item.material_id);
+        const poItem = item._poItemId
+          ? selectedPOItems.find(p=>p.id===item._poItemId)
+          : selectedPOItems.find(p=>p.material_id===item.material_id);
         if (poItem) {
           const newReceived = poItem.qty_received + qtyToStock;
           await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
@@ -472,7 +566,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       }).eq('id', selectedPO.id);
     }
 
-    showToast(`บันทึกใบรับ ${roNumber} สำเร็จ — รอ QC ตรวจสอบ ${cart.length} รายการ`);
+    const savedCount = cart.length;
+    showToast(`บันทึกใบรับ ${roNumber} สำเร็จ — รอ QC ตรวจสอบ ${savedCount} รายการ`);
     cart = []; selectedPO = null; selectedPOItems = [];
     renderCart();
     document.getElementById('supInput').value = '';
@@ -484,6 +579,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('poSelect').value = '';
     document.getElementById('poItemsPreview').style.display = 'none';
     document.getElementById('clearPOBtn').style.display = 'none';
+    document.getElementById('poReceiveCard').style.display = 'none';
+    document.getElementById('manualAddCard').style.display = '';
     await loadMaster();
     await loadRecentRO();
 
