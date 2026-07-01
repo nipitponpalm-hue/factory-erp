@@ -88,15 +88,8 @@
   <!-- STEP 1: ข้อมูลการรับ -->
   <div class="card">
     <div class="card-title"><span class="step-badge">1</span> ข้อมูลการรับสินค้า</div>
+    <input type="hidden" id="supId">
     <div class="row">
-      <div class="field-lg">
-        <label>Supplier *</label>
-        <div class="combo" id="supComboWrap">
-          <input type="text" id="supInput" placeholder="พิมพ์ค้นหา Supplier..." autocomplete="off">
-          <div class="combo-list" id="supList"></div>
-        </div>
-        <input type="hidden" id="supId">
-      </div>
       <div class="field">
         <label>วันที่รับสินค้า *</label>
         <input type="date" id="receiveDate">
@@ -112,8 +105,6 @@
         <label>ทะเบียนรถ</label>
         <input type="text" id="vehicleNo" placeholder="กข-1234">
       </div>
-    </div>
-    <div class="row" style="margin-top:10px;">
       <div class="field-lg">
         <label>หมายเหตุ</label>
         <input type="text" id="roNote" placeholder="หมายเหตุเพิ่มเติม">
@@ -338,12 +329,9 @@ document.getElementById('poSelect').addEventListener('change', async function() 
   selectedPO = poRes.data;
   selectedPOItems = itemsRes.data||[];
 
-  // auto-fill supplier
+  // set supId from PO
   const sup = selectedPO.suppliers;
-  if (sup) {
-    document.getElementById('supInput').value = `${sup.code} — ${sup.name}`;
-    document.getElementById('supId').value = sup.id;
-  }
+  if (sup) document.getElementById('supId').value = sup.id;
 
   document.getElementById('clearPOBtn').style.display='';
   document.getElementById('poItemsPreview').style.display='none';
@@ -359,22 +347,6 @@ document.getElementById('clearPOBtn').addEventListener('click', ()=>{
 });
 
 // ===== COMBOS =====
-setupCombo({
-  inputEl: document.getElementById('supInput'),
-  listEl:  document.getElementById('supList'),
-  getItems(q) {
-    q = (q||'').toLowerCase();
-    return suppliers.filter(s => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
-  },
-  renderItem: (s,i) => `<div class="combo-item" data-idx="${i}"><span><b>${s.code}</b> — ${s.name}</span></div>`,
-  onQueryChange() { document.getElementById('supId').value = ''; },
-  onSelect(s) {
-    document.getElementById('supInput').value = `${s.code} — ${s.name}`;
-    document.getElementById('supId').value = s.id;
-    checkConfirm();
-  }
-});
-
 setupCombo({
   inputEl: document.getElementById('oprInput'),
   listEl:  document.getElementById('oprList'),
@@ -431,7 +403,6 @@ function renderCart() {
 
 function checkConfirm() {
   const base = selectedPO
-    && document.getElementById('supId').value
     && document.getElementById('receiveDate').value
     && document.getElementById('oprInput').value.trim();
   const checks = document.querySelectorAll('.pr-check:checked');
@@ -599,7 +570,6 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     showToast(`บันทึกใบรับ ${roNumber} สำเร็จ — รอ QC ตรวจสอบ ${savedCount} รายการ`);
     cart = []; selectedPO = null; selectedPOItems = [];
     renderCart();
-    document.getElementById('supInput').value = '';
     document.getElementById('supId').value = '';
     document.getElementById('oprInput').value = '';
     document.getElementById('vehicleNo').value = '';
