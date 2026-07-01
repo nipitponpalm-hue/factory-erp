@@ -407,8 +407,8 @@ function renderLotSelector(mat) {
     return;
   }
 
-  document.getElementById('lotSelectorList').innerHTML = lots.map((l,i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1.5px solid var(--line);" id="lotsel-${l.id}">
+  document.getElementById('lotSelectorList').innerHTML = lots.map(l => `
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1.5px solid var(--line);">
       <div style="flex:1;">
         <span class="lot-num">${l.lot_number}</span>
         <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(l.rm_stock?.qty_on_hand||0)} ${mat.unit}</span>
@@ -416,29 +416,35 @@ function renderLotSelector(mat) {
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="margin:0;white-space:nowrap;font-size:13px;">จำนวนใช้</label>
-        <input type="number" step="0.01" min="0.01" placeholder="0.00"
-          id="lotqty-${l.id}" data-lot-id="${l.id}"
+        <input type="number" step="0.01" min="0" placeholder="0.00"
+          id="lotqty-${l.id}" data-lot-id="${l.id}" data-lot-number="${l.lot_number}"
+          data-qty-on-hand="${l.rm_stock?.qty_on_hand||0}" data-exp="${l.exp_date||''}"
           style="width:100px;" inputmode="decimal">
         <span style="font-size:13px;color:var(--ink-soft);">${mat.unit}</span>
-        <button class="btn btn-primary btn-sm" onclick="addRmInput('${l.id}','${l.lot_number}','${mat.name}','${mat.sku}','${mat.unit}',${l.rm_stock?.qty_on_hand||0},'${l.exp_date||''}')">+ เพิ่ม</button>
       </div>
-    </div>`).join('');
+    </div>`).join('')
+  + `<div style="display:flex;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-primary" onclick="addAllRmInputs()">+ เพิ่มทั้งหมด</button>
+    </div>`;
   wrap.style.display='block';
 }
 
-window.addRmInput = function(lotId, lotNumber, matName, matSku, unit, qtyOnHand, expDate) {
-  const input = document.getElementById(`lotqty-${lotId}`);
-  const qty   = parseFloat(input?.value);
-  if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวนที่ใช้', 'error'); return; }
-
-  if (rmInputs.find(r=>r.lot_id===lotId)) {
-    showToast('Lot นี้ถูกเพิ่มแล้ว', 'error'); return;
-  }
-
-  rmInputs.push({ lot_id:lotId, lot_number:lotNumber, material_name:matName, material_sku:matSku, unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
+window.addAllRmInputs = function() {
+  const inputs = document.querySelectorAll('#lotSelectorList input[data-lot-id]');
+  let added = 0;
+  inputs.forEach(inp => {
+    const qty = parseFloat(inp.value);
+    if (!qty || qty <= 0) return;
+    const lotId     = inp.dataset.lotId;
+    const lotNumber = inp.dataset.lotNumber;
+    const qtyOnHand = parseFloat(inp.dataset.qtyOnHand)||0;
+    const expDate   = inp.dataset.exp||null;
+    if (rmInputs.find(r=>r.lot_id===lotId)) return;
+    rmInputs.push({ lot_id:lotId, lot_number:lotNumber, material_name:matSelected.name, material_sku:matSelected.sku, unit:matSelected.unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
+    added++;
+  });
+  if (!added) { showToast('กรุณาระบุจำนวนอย่างน้อย 1 Lot', 'error'); return; }
   renderRmTable();
-
-  // reset selector
   document.getElementById('matInput').value='';
   document.getElementById('matId').value='';
   document.getElementById('lotSelectorWrap').style.display='none';
@@ -741,22 +747,38 @@ window.switchTab = function(tab) {
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="margin:0;white-space:nowrap;font-size:13px;">จำนวนคัด</label>
-          <input type="number" step="0.01" min="0.01" placeholder="0.00" id="rplotqty-${l.id}" style="width:100px;" inputmode="decimal">
+          <input type="number" step="0.01" min="0" placeholder="0.00"
+            id="rplotqty-${l.id}" data-lot-id="${l.id}" data-lot-number="${l.lot_number}"
+            data-mat-id="${mat.id}" data-qty-on-hand="${l.rm_stock?.qty_on_hand||0}" data-exp="${l.exp_date||''}"
+            style="width:100px;" inputmode="decimal">
           <span style="font-size:13px;color:var(--ink-soft);">${mat.unit}</span>
-          <button class="btn btn-primary btn-sm" onclick="rpAddInput('${l.id}','${l.lot_number}','${mat.id}','${mat.name}','${mat.sku}','${mat.unit}',${l.rm_stock?.qty_on_hand||0},'${l.exp_date||''}')">+ เพิ่ม</button>
         </div>
-      </div>`).join('');
+      </div>`).join('')
+    + `<div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="btn btn-primary" onclick="rpAddAllInputs()">+ เพิ่มทั้งหมด</button>
+      </div>`;
     wrap.style.display='block';
   }
 
-  window.rpAddInput = function(lotId, lotNumber, matId, matName, matSku, unit, qtyOnHand, expDate) {
-    const input = document.getElementById(`rplotqty-${lotId}`);
-    const qty = parseFloat(input?.value);
-    if (!qty||qty<=0){ showToast('กรุณาระบุจำนวนที่คัด','error'); return; }
-    if (rpInputs.find(r=>r.lot_id===lotId)){ showToast('Lot นี้ถูกเพิ่มแล้ว','error'); return; }
-    rpInputs.push({ lot_id:lotId, lot_number:lotNumber, material_id:matId, material_name:matName, material_sku:matSku, unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
-    // set output unit from first input
-    if (rpInputs.length===1) document.getElementById('rpUnitDisplay').value=unit;
+  window.rpAddAllInputs = function() {
+    const inputs = document.querySelectorAll('#rpLotSelectorList input[data-lot-id]');
+    let added = 0;
+    let firstUnit = null;
+    inputs.forEach(inp => {
+      const qty = parseFloat(inp.value);
+      if (!qty || qty <= 0) return;
+      const lotId     = inp.dataset.lotId;
+      const lotNumber = inp.dataset.lotNumber;
+      const matId     = inp.dataset.matId;
+      const qtyOnHand = parseFloat(inp.dataset.qtyOnHand)||0;
+      const expDate   = inp.dataset.exp||null;
+      if (rpInputs.find(r=>r.lot_id===lotId)) return;
+      rpInputs.push({ lot_id:lotId, lot_number:lotNumber, material_id:matId, material_name:rpMatSelected.name, material_sku:rpMatSelected.sku, unit:rpMatSelected.unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
+      if (!firstUnit) firstUnit = rpMatSelected.unit;
+      added++;
+    });
+    if (!added) { showToast('กรุณาระบุจำนวนอย่างน้อย 1 Lot', 'error'); return; }
+    if (rpInputs.length === added && firstUnit) document.getElementById('rpUnitDisplay').value = firstUnit;
     rpRenderTable(); rpCalcLoss();
     document.getElementById('rpMatInput').value='';
     document.getElementById('rpMatId').value='';
