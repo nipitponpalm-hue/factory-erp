@@ -202,6 +202,41 @@
   </div>
 </main>
 
+<!-- Modal: รายละเอียดใบรับ -->
+<div class="modal-overlay" id="roDetailOverlay" style="display:none;">
+  <div class="modal" style="max-width:780px;width:95%;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="roDetailTitle">รายละเอียดใบรับ</div>
+        <div id="roDetailMeta" style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" id="roDetailClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="roDetailInfo" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;padding:12px;background:var(--surface);border-radius:8px;font-size:13px;"></div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--green-deep);">รายการวัตถุดิบ</div>
+      <div class="table-wrap">
+        <table id="roDetailTable" style="font-size:13px;">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>วัตถุดิบ</th>
+              <th style="text-align:right;">จำนวนรับ</th>
+              <th>หน่วย</th>
+              <th>Supplier Lot</th>
+              <th>MFG</th>
+              <th>EXP</th>
+              <th>หมายเหตุ / น้ำหนักจริง</th>
+            </tr>
+          </thead>
+          <tbody id="roDetailBody"></tbody>
+        </table>
+      </div>
+      <div id="roDetailEmpty" class="empty-row" style="display:none;">ไม่มีรายการ</div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -605,7 +640,7 @@ async function loadRecentRO() {
   const empty = document.getElementById('roEmpty');
   if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
-  body.innerHTML = data.map(r => `<tr>
+  body.innerHTML = data.map(r => `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;" title="คลิกดูรายละเอียด">
     <td><span class="lot-num">${r.ro_number}</span></td>
     <td>${r.suppliers?.name||'-'}</td>
     <td>${fmtDate(r.receive_date)}</td>
@@ -613,7 +648,68 @@ async function loadRecentRO() {
     <td style="text-align:center;">${r.receive_items?.length||0}</td>
     <td><span class="status-badge ${r.status==='confirmed'?'s-confirmed':'s-draft'}">${r.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'}</span></td>
   </tr>`).join('');
+  body.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', () => openRODetail(row.dataset.id));
+  });
 }
+
+// ===== RO DETAIL MODAL =====
+async function openRODetail(roId) {
+  showLoading(true);
+  const [roRes, itemsRes] = await Promise.all([
+    db.from('receive_orders').select('*,suppliers(code,name),purchase_orders(internal_ref,po_number)').eq('id',roId).single(),
+    db.from('receive_items').select('*,materials(sku,name)').eq('ro_id',roId).order('created_at'),
+  ]);
+  showLoading(false);
+
+  const ro = roRes.data;
+  const items = itemsRes.data||[];
+
+  document.getElementById('roDetailTitle').textContent = `ใบรับสินค้า ${ro.ro_number}`;
+  document.getElementById('roDetailMeta').textContent =
+    `วันที่รับ: ${fmtDate(ro.receive_date)}  |  ผู้รับ: ${ro.operator}`;
+
+  // info row
+  const po = ro.purchase_orders;
+  const poText = po ? `${po.internal_ref}${po.po_number?' / '+po.po_number:''}` : '-';
+  document.getElementById('roDetailInfo').innerHTML = [
+    ['Supplier',    ro.suppliers?.name||'-'],
+    ['อ้างอิง PO',  poText],
+    ['ทะเบียนรถ',  ro.vehicle_no||'-'],
+    ['หมายเหตุ',   ro.note||'-'],
+    ['สถานะ',      ro.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'],
+  ].map(([k,v])=>`<div><span style="color:var(--ink-soft);">${k}:</span> <b>${v}</b></div>`).join('');
+
+  const body  = document.getElementById('roDetailBody');
+  const empty = document.getElementById('roDetailEmpty');
+  if (!items.length) { body.innerHTML=''; empty.style.display='block'; }
+  else {
+    empty.style.display='none';
+    body.innerHTML = items.map(it => {
+      const noteText = it.note||'';
+      const isOver = noteText.includes('น้ำหนักจริง');
+      return `<tr>
+        <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
+        <td>${it.materials?.name||'-'}</td>
+        <td style="text-align:right;font-weight:600;">${fmtQty(it.qty)}</td>
+        <td>${it.unit}</td>
+        <td>${it.supplier_lot||'-'}</td>
+        <td>${it.mfg_date?fmtDate(it.mfg_date):'-'}</td>
+        <td>${it.exp_date?fmtDate(it.exp_date):'-'}</td>
+        <td style="color:${isOver?'var(--amber)':'var(--ink-soft)'};font-size:12px;">${noteText||'-'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('roDetailOverlay').style.display='flex';
+}
+
+document.getElementById('roDetailClose').addEventListener('click', () => {
+  document.getElementById('roDetailOverlay').style.display='none';
+});
+document.getElementById('roDetailOverlay').addEventListener('click', function(e) {
+  if (e.target===this) this.style.display='none';
+});
 
 // ===== INIT =====
 (async function init() {
