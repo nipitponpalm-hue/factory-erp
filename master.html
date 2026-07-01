@@ -861,9 +861,12 @@ document.getElementById('resetConfirmOkBtn').addEventListener('click', async () 
       'receive_orders',
       'purchase_orders',
     ];
+    // บางตารางมี PK ที่ไม่ใช่ id
+    const pkMap = { fg_stock: 'fg_lot_id', rm_stock: 'lot_id' };
     const failed = [];
     for (const t of tables) {
-      const { error } = await db.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const pk = pkMap[t] || 'id';
+      const { error } = await db.from(t).delete().neq(pk, '00000000-0000-0000-0000-000000000000');
       if (error) { console.warn(`${t}:`, error.message); failed.push(t); }
     }
     // lot_sequences ใช้ prefix เป็น key ไม่มี id
