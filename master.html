@@ -840,33 +840,41 @@ document.getElementById('resetConfirmOkBtn').addEventListener('click', async () 
     // ลบตามลำดับ FK (child → parent)
     // ลำดับ: child → parent (ตาม FK constraint)
     const tables = [
-      'po_items',            // child of purchase_orders
-      'repack_outputs',      // child of repack_orders
-      'repack_inputs',       // child of repack_orders + rm_lots
-      'dispatch_items',      // child of dispatch_orders + fg_lots
-      'fg_transactions',     // child of fg_lots
-      'fg_stock',            // child of fg_lots
-      'production_inputs',   // child of production_orders + rm_lots
-      'qc_records',          // child of rm_lots
-      'rm_transactions',     // child of rm_lots
-      'rm_stock',            // child of rm_lots
-      'rm_lots',             // child of receive_items
-      'receive_items',       // child of receive_orders
-      'fg_lots',             // child of production_orders
+      'po_items',
+      'issue_items',
+      'repack_outputs',
+      'repack_inputs',
+      'dispatch_items',
+      'fg_transactions',
+      'fg_stock',
+      'production_inputs',
+      'qc_records',
+      'rm_transactions',
+      'rm_stock',
+      'rm_lots',
+      'receive_items',
+      'issue_orders',
+      'fg_lots',
       'dispatch_orders',
       'repack_orders',
       'production_orders',
-      'receive_orders',      // child of purchase_orders
+      'receive_orders',
       'purchase_orders',
     ];
+    const failed = [];
     for (const t of tables) {
       const { error } = await db.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (error) console.warn(`${t}:`, error.message);
+      if (error) { console.warn(`${t}:`, error.message); failed.push(t); }
     }
     // lot_sequences ใช้ prefix เป็น key ไม่มี id
     const { error: seqErr } = await db.from('lot_sequences').delete().neq('prefix', '');
-    if (seqErr) console.warn('lot_sequences:', seqErr.message);
-    showToast('✅ ล้างข้อมูลทดสอบเสร็จแล้ว — Master Data ยังอยู่ครบ');
+    if (seqErr) { console.warn('lot_sequences:', seqErr.message); failed.push('lot_sequences'); }
+
+    if (failed.length) {
+      showToast(`⚠️ ล้างไม่ได้: ${failed.join(', ')}`, 'error');
+    } else {
+      showToast('✅ ล้างข้อมูลทดสอบเสร็จแล้ว — Master Data ยังอยู่ครบ');
+    }
   } catch(e) {
     showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
   } finally {
