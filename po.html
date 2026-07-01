@@ -296,7 +296,7 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
       await db.from('po_items').delete().eq('po_id',editId);
       poId = editId;
     } else {
-      payload.internal_ref = await generateLotNumber('PO');
+      payload.internal_ref = await generateLotNumber('PC');
       payload.status = 'open';
       const { data, error } = await db.from('purchase_orders').insert(payload).select('id').single();
       if (error) throw error;
