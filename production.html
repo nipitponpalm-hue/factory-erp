@@ -12,6 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Factory ERP">
 <link rel="apple-touch-icon" href="/icons/icon-192.png"><link rel="stylesheet" href="css/main.css">
+<style>
+.tab-btn { padding:8px 20px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--ink-soft); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:.15s; }
+.tab-btn.active { background:var(--green-deep); color:#fff; border-color:var(--green-deep); }
+</style>
 </head>
 <body>
 
@@ -46,6 +50,15 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
     ผลิต (Production)
   </div>
+
+  <!-- TABS -->
+  <div class="tab-bar" style="display:flex;gap:4px;margin-bottom:20px;">
+    <button class="tab-btn active" id="tabBtnProd" onclick="switchTab('prod')">🏭 ผลิต FG</button>
+    <button class="tab-btn" id="tabBtnRepack" onclick="switchTab('repack')">✂️ คัด / รีแพ็ค</button>
+  </div>
+
+  <!-- TAB: ผลิต FG -->
+  <div id="tabProd">
 
   <!-- STEP 1 -->
   <div class="card">
@@ -165,6 +178,116 @@
     </div>
     <div id="poEmpty" class="empty-row">ยังไม่มีข้อมูล</div>
   </div>
+
+  </div><!-- /tabProd -->
+
+  <!-- TAB: คัด/รีแพ็ค -->
+  <div id="tabRepack" style="display:none;">
+
+    <!-- RP STEP 1 -->
+    <div class="card">
+      <div class="card-title"><span class="step-badge">1</span> ข้อมูลใบคัด/รีแพ็ค</div>
+      <div class="row">
+        <div class="field">
+          <label>ผู้คัด *</label>
+          <div class="combo" id="rpOprComboWrap">
+            <input type="text" id="rpOprInput" placeholder="เลือกผู้คัด..." autocomplete="off">
+            <div class="combo-list" id="rpOprList"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>วันที่คัด *</label>
+          <input type="date" id="rpDate">
+        </div>
+        <div class="field-lg">
+          <label>หมายเหตุ</label>
+          <input type="text" id="rpNote" placeholder="เช่น คัด batch เช้า">
+        </div>
+      </div>
+    </div>
+
+    <!-- RP STEP 2: RM Inputs -->
+    <div class="card">
+      <div class="card-title"><span class="step-badge">2</span> วัตถุดิบที่นำมาคัด (RM Input)</div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">เลือก Lot วัตถุดิบที่จะนำมาคัดแยก/รีแพ็ค</p>
+      <div class="row">
+        <div class="field-lg">
+          <label>วัตถุดิบ *</label>
+          <div class="combo" id="rpMatComboWrap">
+            <input type="text" id="rpMatInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ..." autocomplete="off">
+            <div class="combo-list" id="rpMatList"></div>
+          </div>
+          <input type="hidden" id="rpMatId">
+        </div>
+      </div>
+      <div id="rpLotSelectorWrap" style="display:none;margin-top:10px;">
+        <label style="font-size:13px;font-weight:600;">เลือก Lot <span id="rpMatNameLabel" style="color:var(--green-deep);"></span></label>
+        <div id="rpLotSelectorList" style="margin-top:6px;"></div>
+      </div>
+      <div class="table-wrap" style="margin-top:14px;">
+        <table>
+          <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวนที่คัด *</th><th>หน่วย</th><th></th></tr></thead>
+          <tbody id="rpRmBody"></tbody>
+        </table>
+      </div>
+      <div id="rpRmEmpty" class="empty-row">ยังไม่มีวัตถุดิบ</div>
+    </div>
+
+    <!-- LOSS BOX -->
+    <div id="rpLossBox" style="display:none;align-items:center;gap:16px;padding:14px 18px;border:2px solid;border-radius:10px;margin-bottom:16px;transition:.2s;">
+      <div style="font-size:36px;font-weight:800;" id="rpLossVal">-</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink-deep);">Loss จากการคัด</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);" id="rpLossDetail"></div>
+      </div>
+    </div>
+
+    <!-- RP STEP 3: Output -->
+    <div class="card">
+      <div class="card-title"><span class="step-badge">3</span> ผลลัพธ์หลังคัด (RM Output)</div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">ระบุจำนวนที่ได้หลังคัด — ระบบจะสร้าง RM Lot ใหม่ SKU เดิม</p>
+      <div class="row">
+        <div class="field">
+          <label>จำนวนที่ได้ *</label>
+          <input type="number" id="rpQtyOut" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>หน่วย</label>
+          <input type="text" id="rpUnitDisplay" readonly placeholder="-">
+        </div>
+        <div class="field">
+          <label>วันหมดอายุ (EXP)</label>
+          <input type="date" id="rpExpDate">
+        </div>
+        <div class="field-lg">
+          <label>หมายเหตุ Lot ใหม่</label>
+          <input type="text" id="rpOutNote" placeholder="เช่น หลังคัด/แต่งแล้ว">
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM -->
+    <div class="card">
+      <div class="save-bar">
+        <button class="btn btn-ghost" id="rpResetBtn">ล้างทั้งหมด</button>
+        <button class="btn btn-primary" id="rpConfirmBtn" disabled>✓ ยืนยันบันทึกการคัด</button>
+      </div>
+    </div>
+
+    <!-- รายการล่าสุด -->
+    <div class="card">
+      <div class="card-title">ใบคัด/รีแพ็คล่าสุด</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>เลขที่ใบคัด</th><th>วันที่</th><th>ผู้คัด</th><th style="text-align:right;">Input รวม</th><th style="text-align:right;">Output</th><th>Loss%</th></tr></thead>
+          <tbody id="rpBody"></tbody>
+        </table>
+      </div>
+      <div id="rpEmpty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+
+  </div><!-- /tabRepack -->
+
 </main>
 
 <!-- DETAIL MODAL -->
@@ -541,6 +664,275 @@ window.showDetail = async function(poId, poNumber) {
   await loadMaster();
   await loadRecentPO();
   showLoading(false);
+})();
+
+// ===== TAB SWITCH =====
+window.switchTab = function(tab) {
+  document.getElementById('tabProd').style.display    = tab==='prod'   ? '' : 'none';
+  document.getElementById('tabRepack').style.display  = tab==='repack' ? '' : 'none';
+  document.getElementById('tabBtnProd').classList.toggle('active',   tab==='prod');
+  document.getElementById('tabBtnRepack').classList.toggle('active', tab==='repack');
+};
+
+// ===== REPACK MODULE =====
+(function(){
+  let rpInputs = [];  // { lot_id, lot_number, material_id, material_name, material_sku, unit, qty_used, qty_on_hand, exp_date }
+  let rpMatSelected = null;
+
+  // Operator combo (reuse operators from parent scope)
+  setupCombo({
+    inputEl: document.getElementById('rpOprInput'),
+    listEl:  document.getElementById('rpOprList'),
+    getItems(q){ q=(q||'').toLowerCase(); return operators.filter(o=>o.name.toLowerCase().includes(q)); },
+    renderItem: (o,i)=>`<div class="combo-item" data-idx="${i}">${o.name}</div>`,
+    onSelect(o){ document.getElementById('rpOprInput').value=o.name; rpCheckConfirm(); }
+  });
+
+  // Material combo
+  setupCombo({
+    inputEl: document.getElementById('rpMatInput'),
+    listEl:  document.getElementById('rpMatList'),
+    getItems(q){
+      q=(q||'').toLowerCase();
+      const list = q ? materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : materials;
+      return list.slice(0,40);
+    },
+    renderItem: (m,i)=>`<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
+    onQueryChange(){ rpMatSelected=null; document.getElementById('rpMatId').value=''; document.getElementById('rpLotSelectorWrap').style.display='none'; },
+    onSelect(m){
+      rpMatSelected=m;
+      document.getElementById('rpMatInput').value=`${m.sku} — ${m.name}`;
+      document.getElementById('rpMatId').value=m.id;
+      rpRenderLotSelector(m);
+    }
+  });
+
+  function rpRenderLotSelector(mat) {
+    const lots = allAvailableLots.filter(l=>l.material_id===mat.id);
+    const wrap = document.getElementById('rpLotSelectorWrap');
+    document.getElementById('rpMatNameLabel').textContent=`${mat.sku} — ${mat.name}`;
+    if (!lots.length) {
+      document.getElementById('rpLotSelectorList').innerHTML='<div style="color:var(--ink-soft);font-size:13px;padding:8px;">ไม่มี Lot ที่ใช้งานได้</div>';
+      wrap.style.display='block'; return;
+    }
+    document.getElementById('rpLotSelectorList').innerHTML = lots.map(l=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1.5px solid var(--line);">
+        <div style="flex:1;">
+          <span class="lot-num">${l.lot_number}</span>
+          <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(l.rm_stock?.qty_on_hand||0)} ${mat.unit}</span>
+          ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:6px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="margin:0;white-space:nowrap;font-size:13px;">จำนวนคัด</label>
+          <input type="number" step="0.01" min="0.01" placeholder="0.00" id="rplotqty-${l.id}" style="width:100px;" inputmode="decimal">
+          <span style="font-size:13px;color:var(--ink-soft);">${mat.unit}</span>
+          <button class="btn btn-primary btn-sm" onclick="rpAddInput('${l.id}','${l.lot_number}','${mat.id}','${mat.name}','${mat.sku}','${mat.unit}',${l.rm_stock?.qty_on_hand||0},'${l.exp_date||''}')">+ เพิ่ม</button>
+        </div>
+      </div>`).join('');
+    wrap.style.display='block';
+  }
+
+  window.rpAddInput = function(lotId, lotNumber, matId, matName, matSku, unit, qtyOnHand, expDate) {
+    const input = document.getElementById(`rplotqty-${lotId}`);
+    const qty = parseFloat(input?.value);
+    if (!qty||qty<=0){ showToast('กรุณาระบุจำนวนที่คัด','error'); return; }
+    if (rpInputs.find(r=>r.lot_id===lotId)){ showToast('Lot นี้ถูกเพิ่มแล้ว','error'); return; }
+    rpInputs.push({ lot_id:lotId, lot_number:lotNumber, material_id:matId, material_name:matName, material_sku:matSku, unit, qty_used:qty, qty_on_hand:qtyOnHand, exp_date:expDate||null });
+    // set output unit from first input
+    if (rpInputs.length===1) document.getElementById('rpUnitDisplay').value=unit;
+    rpRenderTable(); rpCalcLoss();
+    document.getElementById('rpMatInput').value='';
+    document.getElementById('rpMatId').value='';
+    document.getElementById('rpLotSelectorWrap').style.display='none';
+    rpMatSelected=null;
+    document.getElementById('rpMatInput').focus();
+  };
+
+  function rpRenderTable() {
+    const body=document.getElementById('rpRmBody');
+    const empty=document.getElementById('rpRmEmpty');
+    if (!rpInputs.length){ body.innerHTML=''; empty.style.display='block'; rpCheckConfirm(); return; }
+    empty.style.display='none';
+    body.innerHTML=rpInputs.map((r,i)=>`<tr>
+      <td><span class="lot-num">${r.lot_number}</span></td>
+      <td>${r.material_name} <span style="font-size:11px;color:var(--ink-soft);">(${r.material_sku})</span></td>
+      <td>${r.exp_date?fmtDate(r.exp_date):'-'}</td>
+      <td style="text-align:right;">
+        <input type="number" step="0.01" min="0.01" value="${r.qty_used}" style="width:100px;text-align:right;"
+          onchange="rpUpdateQty(${i},this.value)">
+      </td>
+      <td>${r.unit}</td>
+      <td><button class="btn-icon" style="color:var(--red);" onclick="rpRemove(${i})">✕</button></td>
+    </tr>`).join('');
+    rpCheckConfirm();
+  }
+
+  window.rpUpdateQty = function(i,val){ rpInputs[i].qty_used=parseFloat(val)||0; rpCalcLoss(); rpCheckConfirm(); };
+  window.rpRemove    = function(i){ rpInputs.splice(i,1); rpRenderTable(); rpCalcLoss(); };
+
+  function rpCalcLoss() {
+    const totalIn  = rpInputs.reduce((s,r)=>s+(r.qty_used||0),0);
+    const qtyOut   = parseFloat(document.getElementById('rpQtyOut').value)||0;
+    const box      = document.getElementById('rpLossBox');
+    if (!totalIn||!qtyOut){ box.style.display='none'; return; }
+    const loss    = totalIn - qtyOut;
+    const lossPct = (loss/totalIn*100).toFixed(1);
+    const high    = parseFloat(lossPct)>30;
+    box.style.display='flex';
+    box.style.background   = high?'#FEF3C7':'#D1FAE5';
+    box.style.borderColor  = high?'#F59E0B':'#10B981';
+    document.getElementById('rpLossVal').textContent=`${lossPct}%`;
+    document.getElementById('rpLossVal').style.color=high?'#92400E':'#065F46';
+    document.getElementById('rpLossDetail').textContent=`Input ${fmtQty(totalIn)} → Output ${fmtQty(qtyOut)} | สูญเสีย ${fmtQty(Math.max(0,loss))} ${rpInputs[0]?.unit||''}`;
+  }
+
+  function rpCheckConfirm() {
+    const ok = document.getElementById('rpOprInput').value.trim()
+      && document.getElementById('rpDate').value
+      && rpInputs.length>0
+      && rpInputs.every(r=>r.qty_used>0)
+      && parseFloat(document.getElementById('rpQtyOut').value)>0;
+    document.getElementById('rpConfirmBtn').disabled=!ok;
+  }
+
+  document.getElementById('rpQtyOut').addEventListener('input',()=>{ rpCalcLoss(); rpCheckConfirm(); });
+  document.getElementById('rpDate').addEventListener('change', rpCheckConfirm);
+  document.getElementById('rpOprInput').addEventListener('input', rpCheckConfirm);
+
+  // ===== CONFIRM REPACK =====
+  document.getElementById('rpConfirmBtn').addEventListener('click', async ()=>{
+    const operator  = document.getElementById('rpOprInput').value.trim();
+    const rpDate    = document.getElementById('rpDate').value;
+    const rpNote    = document.getElementById('rpNote').value.trim()||null;
+    const qtyOut    = parseFloat(document.getElementById('rpQtyOut').value);
+    const expDate   = document.getElementById('rpExpDate').value||null;
+    const outNote   = document.getElementById('rpOutNote').value.trim()||null;
+    const matId     = rpInputs[0]?.material_id;
+    const unit      = rpInputs[0]?.unit;
+    const totalIn   = rpInputs.reduce((s,r)=>s+r.qty_used,0);
+
+    document.getElementById('rpConfirmBtn').disabled=true;
+    showLoading(true);
+    try {
+      // 1. สร้างเลขที่ใบคัด
+      const rpNumber = await generateLotNumber('RP');
+
+      // 2. Insert repack_order
+      const { data:rpo, error:rpoErr } = await db.from('repack_orders')
+        .insert({ rp_number:rpNumber, operator, repack_date:rpDate, note:rpNote, status:'completed' })
+        .select('id').single();
+      if (rpoErr) throw rpoErr;
+
+      // 3. repack_inputs + หัก rm_stock
+      for (const rm of rpInputs) {
+        await db.from('repack_inputs').insert({ rp_id:rpo.id, lot_id:rm.lot_id, qty_used:rm.qty_used, unit:rm.unit });
+        const newQty = rm.qty_on_hand - rm.qty_used;
+        await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty), updated_at:new Date().toISOString() }).eq('lot_id',rm.lot_id);
+        if (newQty<=0) await db.from('rm_lots').update({status:'depleted'}).eq('id',rm.lot_id);
+        await db.from('rm_transactions').insert({
+          lot_id:rm.lot_id, txn_type:'repack', qty:-rm.qty_used,
+          ref_id:rpo.id, ref_type:'repack_order', operator,
+          note:`คัด/รีแพ็ค RP: ${rpNumber}`
+        });
+      }
+
+      // 4. สร้าง RM Lot ใหม่ (SKU เดิม)
+      const newLotNumber = await generateLotNumber('RM');
+      const { data:newLot, error:lotErr } = await db.from('rm_lots').insert({
+        lot_number:   newLotNumber,
+        material_id:  matId,
+        receive_date: rpDate,
+        exp_date:     expDate,
+        initial_qty:  qtyOut,
+        unit,
+        status:       'available',
+        note:         outNote || `จากคัด/รีแพ็ค ${rpNumber}`,
+      }).select('id').single();
+      if (lotErr) throw lotErr;
+
+      // 5. rm_stock สำหรับ lot ใหม่
+      await db.from('rm_stock').insert({ lot_id:newLot.id, qty_on_hand:qtyOut });
+
+      // 6. rm_transaction เพิ่มเข้า
+      await db.from('rm_transactions').insert({
+        lot_id:newLot.id, txn_type:'repack_in', qty:qtyOut,
+        ref_id:rpo.id, ref_type:'repack_order', operator,
+        note:`ผลลัพธ์คัด/รีแพ็ค RP: ${rpNumber}`
+      });
+
+      // 7. repack_outputs
+      await db.from('repack_outputs').insert({ rp_id:rpo.id, material_id:matId, qty_output:qtyOut, unit, new_lot_id:newLot.id });
+
+      const lossPct = totalIn>0?((totalIn-qtyOut)/totalIn*100).toFixed(1):'0';
+      showToast(`✅ บันทึกการคัดสำเร็จ — ${rpNumber} | RM Lot ใหม่: ${newLotNumber} | Loss: ${lossPct}%`);
+
+      // reset
+      rpInputs=[];
+      rpRenderTable();
+      rpCalcLoss();
+      document.getElementById('rpOprInput').value='';
+      document.getElementById('rpDate').value=toDateInput();
+      document.getElementById('rpNote').value='';
+      document.getElementById('rpQtyOut').value='';
+      document.getElementById('rpUnitDisplay').value='';
+      document.getElementById('rpExpDate').value='';
+      document.getElementById('rpOutNote').value='';
+      await loadMaster();
+      await loadRecentRP();
+    } catch(e) {
+      console.error(e);
+      showToast('เกิดข้อผิดพลาด: '+e.message,'error');
+      document.getElementById('rpConfirmBtn').disabled=false;
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  document.getElementById('rpResetBtn').addEventListener('click',()=>{
+    rpInputs=[];
+    rpRenderTable();
+    rpCalcLoss();
+    document.getElementById('rpOprInput').value='';
+    document.getElementById('rpMatInput').value='';
+    document.getElementById('rpMatId').value='';
+    document.getElementById('rpQtyOut').value='';
+    document.getElementById('rpUnitDisplay').value='';
+    document.getElementById('rpExpDate').value='';
+    document.getElementById('rpOutNote').value='';
+    document.getElementById('rpNote').value='';
+    document.getElementById('rpLotSelectorWrap').style.display='none';
+    rpMatSelected=null;
+  });
+
+  // ===== RECENT REPACK =====
+  window.loadRecentRP = async function() {
+    const { data } = await db.from('repack_orders')
+      .select('id,rp_number,repack_date,operator,repack_inputs(qty_used),repack_outputs(qty_output,unit)')
+      .order('created_at',{ascending:false}).limit(20);
+    const body=document.getElementById('rpBody');
+    const empty=document.getElementById('rpEmpty');
+    if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    body.innerHTML=data.map(r=>{
+      const totalIn  = (r.repack_inputs||[]).reduce((s,i)=>s+(i.qty_used||0),0);
+      const totalOut = (r.repack_outputs||[]).reduce((s,o)=>s+(o.qty_output||0),0);
+      const unit     = r.repack_outputs?.[0]?.unit||'';
+      const lossPct  = totalIn>0?((totalIn-totalOut)/totalIn*100).toFixed(1):'-';
+      return `<tr>
+        <td><span class="lot-num">${r.rp_number}</span></td>
+        <td>${fmtDate(r.repack_date)}</td>
+        <td>${r.operator||'-'}</td>
+        <td style="text-align:right;">${fmtQty(totalIn)} ${unit}</td>
+        <td style="text-align:right;font-weight:600;color:var(--green-deep);">${fmtQty(totalOut)} ${unit}</td>
+        <td style="font-weight:700;color:${parseFloat(lossPct)>30?'var(--amber)':'var(--ink)'};">${lossPct}%</td>
+      </tr>`;
+    }).join('');
+  };
+
+  // init repack tab
+  document.getElementById('rpDate').value = toDateInput();
+  loadRecentRP();
+
 })();
 
 })();
