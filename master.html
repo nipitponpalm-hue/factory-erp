@@ -668,7 +668,8 @@ let importPending = null;
 
 window.dlTemplate = function(type) {
   const cfg = IMPORT_CONFIG[type];
-  const wsData = [cfg.headers, ...cfg.sample];
+  // แถว 1: column จริง (สำหรับ import), แถว 2: คำอธิบาย, แถว 3+: ตัวอย่าง
+  const wsData = [cfg.columns, cfg.headers, ...cfg.sample];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, cfg.title);
