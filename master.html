@@ -838,24 +838,25 @@ document.getElementById('resetConfirmOkBtn').addEventListener('click', async () 
   showLoading(true);
   try {
     // ลบตามลำดับ FK (child → parent)
+    // ลำดับ: child → parent (ตาม FK constraint)
     const tables = [
-      'repack_outputs',
-      'repack_inputs',
-      'repack_orders',
-      'dispatch_items',
+      'po_items',            // child of purchase_orders
+      'repack_outputs',      // child of repack_orders
+      'repack_inputs',       // child of repack_orders + rm_lots
+      'dispatch_items',      // child of dispatch_orders + fg_lots
+      'fg_transactions',     // child of fg_lots
+      'fg_stock',            // child of fg_lots
+      'production_inputs',   // child of production_orders + rm_lots
+      'qc_records',          // child of rm_lots
+      'rm_transactions',     // child of rm_lots
+      'rm_stock',            // child of rm_lots
+      'rm_lots',             // child of receive_items
+      'receive_items',       // child of receive_orders
+      'fg_lots',             // child of production_orders
       'dispatch_orders',
-      'fg_transactions',
-      'fg_stock',
-      'fg_lots',
-      'production_inputs',
+      'repack_orders',
       'production_orders',
-      'rm_transactions',
-      'rm_stock',
-      'rm_lots',
-      'qc_records',
-      'receive_items',
-      'receive_orders',
-      'po_items',
+      'receive_orders',      // child of purchase_orders
       'purchase_orders',
     ];
     for (const t of tables) {
