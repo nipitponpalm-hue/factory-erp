@@ -69,9 +69,9 @@
 
   <!-- REPORT TABS -->
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-    <button class="tab-btn active" onclick="showTab('receive')">📥 การรับสินค้า</button>
-    <button class="tab-btn" onclick="showTab('po')">📋 ใบสั่งซื้อ (PO)</button>
-    <button class="tab-btn" onclick="showTab('production')">⚙️ การผลิต</button>
+    <button class="tab-btn active" onclick="showTab('po')">📋 ใบสั่งซื้อ (PO)</button>
+    <button class="tab-btn" onclick="showTab('receive')">📥 การรับสินค้า</button>
+    <button class="tab-btn" onclick="showTab('production')">⚙️ การผลิต / คัด</button>
     <button class="tab-btn" onclick="showTab('dispatch')">🚚 การจ่ายสินค้า</button>
     <button class="tab-btn" onclick="showTab('stock')">📦 สต็อกปัจจุบัน</button>
     <button class="tab-btn" onclick="showTab('expiry')">⚠️ ใกล้หมดอายุ</button>
@@ -79,7 +79,7 @@
   </div>
 
   <!-- TAB: RECEIVE -->
-  <div id="tab-receive" class="tab-content">
+  <div id="tab-receive" class="tab-content" style="display:none;">
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         รายงานการรับสินค้า
@@ -96,7 +96,7 @@
   </div>
 
   <!-- TAB: PO -->
-  <div id="tab-po" class="tab-content" style="display:none;">
+  <div id="tab-po" class="tab-content">
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         รายงานใบสั่งซื้อ (PO)
@@ -116,12 +116,12 @@
   <div id="tab-production" class="tab-content" style="display:none;">
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-        รายงานการผลิต
+        รายงานการผลิต / คัด-รีแพ็ค
         <button class="btn btn-ghost btn-sm" onclick="exportTab('production')">📥 Export Excel</button>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>เลขที่ใบผลิต</th><th>วันผลิต</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า (ผลผลิต)</th><th style="text-align:right;">จำนวนผลิต</th><th>หน่วย</th><th>วัตถุดิบที่ใช้</th><th style="text-align:right;">Yield %</th></tr></thead>
+          <thead><tr><th>ประเภท</th><th>เลขที่</th><th>วันที่</th><th>ผู้ดำเนินการ</th><th>วัตถุดิบ / Input</th><th style="text-align:right;">Output</th><th>หน่วย</th><th style="text-align:right;">Yield %</th><th style="text-align:right;">Loss %</th></tr></thead>
           <tbody id="productionBody"></tbody>
         </table>
       </div>
@@ -339,59 +339,99 @@ async function loadPO(from, to) {
 
 // ===== PRODUCTION =====
 async function loadProduction(from, to) {
-  const { data } = await db.from('production_orders')
-    .select('id,po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct)')
-    .gte('completed_at',from).lte('completed_at',to)
-    .order('completed_at',{ascending:false});
+  const [prodRes, rpRes] = await Promise.all([
+    db.from('production_orders')
+      .select('id,po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct)')
+      .gte('completed_at',from).lte('completed_at',to)
+      .order('completed_at',{ascending:false}),
+    db.from('repack_orders')
+      .select('id,rp_number,repack_date,operator,repack_inputs(qty_used,unit,lot_id),repack_outputs(qty_output,unit)')
+      .gte('repack_date',from.slice(0,10)).lte('repack_date',to.slice(0,10))
+      .order('repack_date',{ascending:false}),
+  ]);
 
-  if (!data?.length) {
-    reportData.production=[]; reportData.productionRows=[];
+  const prodData = prodRes.data||[];
+  const rpData   = rpRes.data||[];
+
+  if (!prodData.length && !rpData.length) {
+    reportData.productionRows=[];
     document.getElementById('productionBody').innerHTML='';
     document.getElementById('productionEmpty').style.display='block';
     return;
   }
 
-  // ดึง production_inputs ทั้งหมดของ PO เหล่านี้
-  const poIds = data.map(r=>r.id);
-  const { data: inputs } = await db.from('production_inputs')
-    .select('production_order_id,qty_used,unit,rm_lots(lot_number,materials(name,sku))')
-    .in('production_order_id', poIds);
-
-  // map inputs by po id
+  // ดึง production_inputs
   const inputMap = {};
-  (inputs||[]).forEach(inp => {
-    const pid = inp.production_order_id;
-    if (!inputMap[pid]) inputMap[pid] = [];
-    inputMap[pid].push(inp);
-  });
+  if (prodData.length) {
+    const poIds = prodData.map(r=>r.id);
+    const { data: inputs } = await db.from('production_inputs')
+      .select('production_order_id,qty_used,unit,rm_lots(lot_number,materials(name,sku))')
+      .in('production_order_id', poIds);
+    (inputs||[]).forEach(inp => {
+      const pid = inp.production_order_id;
+      if (!inputMap[pid]) inputMap[pid] = [];
+      inputMap[pid].push(inp);
+    });
+  }
 
-  reportData.production = data;
-  reportData.productionRows = data.map(r => ({
-    ...r, inputs: inputMap[r.id]||[]
-  }));
+  // ดึง lot numbers สำหรับ repack inputs
+  const rpLotIds = [...new Set(rpData.flatMap(r=>(r.repack_inputs||[]).map(i=>i.lot_id)).filter(Boolean))];
+  const rpLotMap = {};
+  if (rpLotIds.length) {
+    const { data: lots } = await db.from('rm_lots').select('id,lot_number,materials(sku,name)').in('id',rpLotIds);
+    (lots||[]).forEach(l=>{ rpLotMap[l.id]=l; });
+  }
+
+  reportData.productionRows = [
+    ...prodData.map(r=>({ _type:'prod', ...r, inputs: inputMap[r.id]||[] })),
+    ...rpData.map(r=>({ _type:'repack', ...r })),
+  ];
 
   const body  = document.getElementById('productionBody');
   const empty = document.getElementById('productionEmpty');
-  empty.style.display = 'none';
-  body.innerHTML = data.map(r => {
-    const fg   = r.fg_lots?.[0];
-    const inps = inputMap[r.id]||[];
-    const rmText = inps.length
-      ? inps.map(i=>`<span style="white-space:nowrap;">${i.rm_lots?.materials?.name||'?'} <b>${fmtQty(i.qty_used)}</b> ${i.unit}</span>`).join('<br>')
-      : '<span style="color:var(--ink-soft);">-</span>';
-    const yld = fg?.yield_pct;
-    const yColor = !yld ? 'var(--ink-soft)' : yld>=70 ? 'var(--green-deep)' : yld>=50 ? 'var(--amber)' : 'var(--red)';
-    return `<tr>
-      <td><span class="lot-num">${r.po_number}</span></td>
-      <td style="font-size:12.5px;">${fmtDT(r.completed_at)}</td>
-      <td>${r.operator}</td>
-      <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
-      <td>${fg?.products?.name||'-'}${fg?.products?.sku?` (${fg.products.sku})`:''}</td>
-      <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'}</td>
-      <td>${fg?.unit||'-'}</td>
-      <td style="font-size:12.5px;line-height:1.7;">${rmText}</td>
-      <td style="text-align:right;font-weight:800;font-size:14px;color:${yColor};">${yld!=null?yld+'%':'-'}</td>
-    </tr>`;
+  empty.style.display='none';
+
+  const yColor = yld => !yld ? 'var(--ink-soft)' : yld>=70 ? 'var(--green-deep)' : yld>=50 ? 'var(--amber)' : 'var(--red)';
+
+  body.innerHTML = reportData.productionRows.map(r => {
+    if (r._type==='prod') {
+      const fg   = r.fg_lots?.[0];
+      const inps = r.inputs||[];
+      const rmText = inps.length
+        ? inps.map(i=>`<span style="white-space:nowrap;">${i.rm_lots?.materials?.name||'?'} ${fmtQty(i.qty_used)} ${i.unit}</span>`).join('<br>')
+        : '-';
+      const yld  = fg?.yield_pct;
+      const loss = yld!=null ? (100-yld).toFixed(1) : null;
+      return `<tr>
+        <td><span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:5px;font-weight:700;">ผลิต FG</span></td>
+        <td><span class="lot-num">${r.po_number}</span></td>
+        <td style="font-size:12.5px;">${fmtDT(r.completed_at)}</td>
+        <td>${r.operator}</td>
+        <td style="font-size:12.5px;line-height:1.7;">${rmText}</td>
+        <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'}</td>
+        <td>${fg?.unit||'-'}</td>
+        <td style="text-align:right;font-weight:800;color:${yColor(yld)};">${yld!=null?yld+'%':'-'}</td>
+        <td style="text-align:right;font-weight:800;color:${yColor(yld)};">${loss!=null?loss+'%':'-'}</td>
+      </tr>`;
+    } else {
+      const totalIn  = (r.repack_inputs||[]).reduce((s,i)=>s+(i.qty_used||0),0);
+      const totalOut = (r.repack_outputs||[]).reduce((s,o)=>s+(o.qty_output||0),0);
+      const unit     = r.repack_outputs?.[0]?.unit||r.repack_inputs?.[0]?.unit||'';
+      const yldPct   = totalIn>0 ? parseFloat((totalOut/totalIn*100).toFixed(1)) : null;
+      const lossPct  = yldPct!=null ? (100-yldPct).toFixed(1) : null;
+      const inps     = (r.repack_inputs||[]).map(i=>{ const l=rpLotMap[i.lot_id]; return `<span style="white-space:nowrap;">${l?.materials?.name||'?'} ${fmtQty(i.qty_used)} ${i.unit}</span>`; }).join('<br>');
+      return `<tr>
+        <td><span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:5px;font-weight:700;">คัด/รีแพ็ค</span></td>
+        <td><span class="lot-num">${r.rp_number}</span></td>
+        <td style="font-size:12.5px;">${fmtDate(r.repack_date)}</td>
+        <td>${r.operator||'-'}</td>
+        <td style="font-size:12.5px;line-height:1.7;">${inps||'-'}</td>
+        <td style="text-align:right;font-weight:700;">${fmtQty(totalOut)}</td>
+        <td>${unit}</td>
+        <td style="text-align:right;font-weight:800;color:${yColor(yldPct)};">${yldPct!=null?yldPct+'%':'-'}</td>
+        <td style="text-align:right;font-weight:800;color:${yColor(yldPct)};">${lossPct!=null?lossPct+'%':'-'}</td>
+      </tr>`;
+    }
   }).join('');
 }
 
