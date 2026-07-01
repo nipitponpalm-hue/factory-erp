@@ -286,9 +286,10 @@ document.getElementById('loadBtn').addEventListener('click', loadAll);
 
 // ===== RECEIVE =====
 async function loadReceive(from, to) {
+  const toDate = to.slice(0,10);
   const { data } = await db.from('receive_orders')
     .select('ro_number,receive_date,operator,status,suppliers(name),receive_items(id)')
-    .gte('receive_date',from).lte('receive_date',to)
+    .gte('receive_date',from).lte('receive_date',toDate)
     .order('receive_date',{ascending:false});
   reportData.receive = data||[];
   const body=document.getElementById('receiveBody');
@@ -309,7 +310,7 @@ async function loadReceive(from, to) {
 async function loadPO(from, to) {
   const { data } = await db.from('purchase_orders')
     .select('internal_ref,po_number,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name))')
-    .gte('created_at', from).lte('created_at', to+'T23:59:59')
+    .gte('created_at', from).lte('created_at', to)
     .order('created_at',{ascending:false});
   reportData.po = data||[];
   const body=document.getElementById('poRptBody');
@@ -396,9 +397,10 @@ async function loadProduction(from, to) {
 
 // ===== DISPATCH =====
 async function loadDispatch(from, to) {
+  const toDate = to.slice(0,10);
   const { data } = await db.from('dispatch_orders')
     .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lots(lot_number,unit,products(name,sku)))')
-    .gte('dispatch_date',from).lte('dispatch_date',to)
+    .gte('dispatch_date',from).lte('dispatch_date',toDate)
     .order('dispatch_date',{ascending:false});
   const rows=[];
   (data||[]).forEach(doR=>{
