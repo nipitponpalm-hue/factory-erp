@@ -846,7 +846,6 @@ window.switchTab = function(tab) {
         initial_qty:  qtyOut,
         unit,
         status:       'available',
-        note:         outNote || `จากคัด/รีแพ็ค ${rpNumber}`,
       }).select('id').single();
       if (lotErr) throw lotErr;
 
