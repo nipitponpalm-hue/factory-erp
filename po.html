@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factory ERP — ใบสั่งซื้อ (PO)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2A4D2C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Factory ERP">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><h1>Factory ERP</h1><p>ระบบจัดการโรงงาน</p></div>
+  <div class="nav-section">
+    <div class="nav-label">ภาพรวม</div>
+    <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">การดำเนินงาน</div>
+    <a href="po.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>ใบสั่งซื้อ (PO)</a>
+    <a href="receive.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
+    <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
+    <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
+    <a href="production.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>ผลิต</a>
+    <a href="dispatch.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>จ่ายสินค้า</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">วิเคราะห์</div>
+    <a href="trace.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Traceability</a>
+    <a href="reports.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>รายงาน</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">ตั้งค่า</div>
+    <a href="master.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Master Data</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+    ใบสั่งซื้อ (PO)
+  </div>
+
+  <!-- FORM สร้าง PO -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">1</span> ข้อมูลใบสั่งซื้อ</div>
+    <input type="hidden" id="poEditId">
+    <div class="row">
+      <div class="field">
+        <label>เลข PO จาก Express <span style="font-weight:400;color:var(--ink-soft);">(ไม่บังคับ)</span></label>
+        <input type="text" id="poNumber" placeholder="เช่น PO6806001">
+      </div>
+      <div class="field-lg">
+        <label>Supplier *</label>
+        <div class="combo" id="supComboWrap">
+          <input type="text" id="supInput" placeholder="พิมพ์ค้นหา Supplier..." autocomplete="off">
+          <div class="combo-list" id="supList"></div>
+        </div>
+        <input type="hidden" id="supId">
+      </div>
+      <div class="field">
+        <label>ผู้สร้าง PO</label>
+        <input type="text" id="createdBy" placeholder="ชื่อผู้สั่งซื้อ">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field-lg">
+        <label>หมายเหตุ</label>
+        <input type="text" id="poNote" placeholder="">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: รายการสินค้า -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">2</span> รายการวัตถุดิบที่สั่ง</div>
+    <div class="row">
+      <div class="field-lg">
+        <label>วัตถุดิบ *</label>
+        <div class="combo" id="matComboWrap">
+          <input type="text" id="matInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ..." autocomplete="off">
+          <div class="combo-list" id="matList"></div>
+        </div>
+        <input type="hidden" id="matId">
+      </div>
+      <div class="field">
+        <label>จำนวนที่สั่ง *</label>
+        <input type="number" id="itemQty" step="0.01" min="0" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>หน่วย</label>
+        <input type="text" id="itemUnit" readonly placeholder="-">
+      </div>
+      <div style="padding-bottom:2px;">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" id="addItemBtn">+ เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:14px;">
+      <table>
+        <thead><tr><th>SKU</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวนสั่ง</th><th>หน่วย</th><th></th></tr></thead>
+        <tbody id="poCartBody"></tbody>
+      </table>
+    </div>
+    <div id="poCartEmpty" class="empty-row">ยังไม่มีรายการ</div>
+
+    <div class="save-bar">
+      <button class="btn btn-ghost" id="clearBtn">ล้าง</button>
+      <button class="btn btn-primary" id="savePOBtn" disabled>✓ สร้างใบสั่งซื้อ</button>
+    </div>
+  </div>
+
+  <!-- รายการ PO -->
+  <div class="card">
+    <div class="card-title">รายการใบสั่งซื้อ</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="filter-btn active" data-status="all">ทั้งหมด</button>
+      <button class="filter-btn" data-status="open">🟢 รอรับ</button>
+      <button class="filter-btn" data-status="partial">🟡 รับบางส่วน</button>
+      <button class="filter-btn" data-status="closed">⚫ ปิดแล้ว</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>เลขอ้างอิง</th><th>เลข PO (Express)</th><th>Supplier</th><th>ผู้สั่ง</th><th>วันที่สร้าง</th><th>รายการ</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="poBody"></tbody>
+      </table>
+    </div>
+    <div id="poEmpty" class="empty-row">ยังไม่มีข้อมูล</div>
+  </div>
+</main>
+
+<!-- MODAL รายละเอียด PO -->
+<div class="modal-overlay" id="poDetailModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="poDetailTitle"></div>
+        <div id="poDetailSub" style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('poDetailModal').classList.remove('show')">✕</button>
+    </div>
+
+    <!-- แก้เลข PO จาก Express -->
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;padding:10px;background:#F9F8F2;border-radius:8px;">
+      <div class="field" style="flex:1;margin:0;">
+        <label>เลข PO จาก Express</label>
+        <input type="text" id="editPoNumber" placeholder="ยังไม่มีเลข PO">
+      </div>
+      <button class="btn btn-ghost btn-sm" id="savePoNumberBtn">บันทึกเลข PO</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="poDetailTable">
+        <thead><tr><th>วัตถุดิบ</th><th style="text-align:right;">สั่ง</th><th style="text-align:right;">รับแล้ว</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th></tr></thead>
+        <tbody id="poDetailBody"></tbody>
+      </table>
+    </div>
+    <div class="save-bar" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="document.getElementById('poDetailModal').classList.remove('show')">ปิด</button>
+      <button class="btn btn-danger btn-sm" id="closePOBtn" style="display:none;">🔒 จบ PO</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<style>
+.filter-btn { border:1.5px solid var(--line);background:transparent;padding:6px 14px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
+.filter-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/lot.js"></script>
+<script>
+(function(){
+
+let suppliers = [], materials = [];
+let poCart = [];
+let matSelected = null;
+let allPOs = [];
+let currentFilter = 'all';
+let detailPoId = null;
+
+async function loadMaster() {
+  const [supRes, matRes] = await Promise.all([
+    db.from('suppliers').select('id,code,name').eq('is_active',true).order('code'),
+    db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
+  ]);
+  suppliers = supRes.data || [];
+  materials = matRes.data || [];
+}
+
+// ===== COMBOS =====
+setupCombo({
+  inputEl: document.getElementById('supInput'),
+  listEl:  document.getElementById('supList'),
+  getItems(q) { q=(q||'').toLowerCase(); return suppliers.filter(s=>s.code.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)); },
+  renderItem: (s,i) => `<div class="combo-item" data-idx="${i}"><span><b>${s.code}</b> — ${s.name}</span></div>`,
+  onQueryChange() { document.getElementById('supId').value=''; },
+  onSelect(s) { document.getElementById('supInput').value=`${s.code} — ${s.name}`; document.getElementById('supId').value=s.id; checkSave(); }
+});
+
+setupCombo({
+  inputEl: document.getElementById('matInput'),
+  listEl:  document.getElementById('matList'),
+  getItems(q) { q=(q||'').toLowerCase(); return materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)).slice(0,40); },
+  renderItem: (m,i) => `<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
+  onQueryChange() { matSelected=null; document.getElementById('matId').value=''; document.getElementById('itemUnit').value=''; },
+  onSelect(m) {
+    matSelected=m;
+    document.getElementById('matInput').value=`${m.sku} — ${m.name}`;
+    document.getElementById('matId').value=m.id;
+    document.getElementById('itemUnit').value=m.unit;
+    document.getElementById('itemQty').focus();
+  }
+});
+
+// ===== CART =====
+function renderCart() {
+  const body=document.getElementById('poCartBody');
+  const empty=document.getElementById('poCartEmpty');
+  if (!poCart.length) { body.innerHTML=''; empty.style.display='block'; checkSave(); return; }
+  empty.style.display='none';
+  body.innerHTML=poCart.map((it,i)=>`<tr>
+    <td><span class="lot-num">${it.sku}</span></td>
+    <td>${it.name}</td>
+    <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
+    <td>${it.unit}</td>
+    <td><button class="btn-icon" style="color:var(--red);" data-i="${i}">✕</button></td>
+  </tr>`).join('');
+  body.querySelectorAll('button[data-i]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ poCart.splice(Number(btn.dataset.i),1); renderCart(); });
+  });
+  checkSave();
+}
+
+function checkSave() {
+  document.getElementById('savePOBtn').disabled = !(document.getElementById('supId').value && poCart.length);
+}
+
+document.getElementById('addItemBtn').addEventListener('click', ()=>{
+  if (!matSelected) { showToast('กรุณาเลือกวัตถุดิบ','error'); return; }
+  const qty = parseFloat(document.getElementById('itemQty').value);
+  if (!qty||qty<=0) { showToast('กรุณาระบุจำนวน','error'); return; }
+  if (poCart.find(x=>x.material_id===matSelected.id)) { showToast('วัตถุดิบนี้อยู่ในรายการแล้ว','warning'); return; }
+  poCart.push({ material_id:matSelected.id, sku:matSelected.sku, name:matSelected.name, unit:matSelected.unit, qty });
+  renderCart();
+  document.getElementById('matInput').value='';
+  document.getElementById('matId').value='';
+  document.getElementById('itemUnit').value='';
+  document.getElementById('itemQty').value='';
+  matSelected=null;
+  document.getElementById('matInput').focus();
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  poCart=[]; renderCart();
+  ['poEditId','poNumber','supInput','supId','createdBy','poNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('savePOBtn').textContent='✓ สร้างใบสั่งซื้อ';
+});
+
+// ===== SAVE PO =====
+document.getElementById('savePOBtn').addEventListener('click', async ()=>{
+  const supId = document.getElementById('supId').value;
+  if (!supId||!poCart.length) return;
+
+  showLoading(true);
+  document.getElementById('savePOBtn').disabled=true;
+  try {
+    const editId = document.getElementById('poEditId').value;
+    const payload = {
+      po_number:   document.getElementById('poNumber').value.trim()||null,
+      supplier_id: supId,
+      created_by:  document.getElementById('createdBy').value.trim()||null,
+      note:        document.getElementById('poNote').value.trim()||null,
+    };
+
+    let poId;
+    if (editId) {
+      await db.from('purchase_orders').update(payload).eq('id',editId);
+      await db.from('po_items').delete().eq('po_id',editId);
+      poId = editId;
+    } else {
+      payload.internal_ref = await generateLotNumber('PO');
+      payload.status = 'open';
+      const { data, error } = await db.from('purchase_orders').insert(payload).select('id').single();
+      if (error) throw error;
+      poId = data.id;
+    }
+
+    const items = poCart.map(it=>({ po_id:poId, material_id:it.material_id, qty_ordered:it.qty, qty_received:0, unit:it.unit }));
+    const { error: itemErr } = await db.from('po_items').insert(items);
+    if (itemErr) throw itemErr;
+
+    showToast(editId ? 'แก้ไข PO สำเร็จ' : 'สร้าง PO สำเร็จ');
+    document.getElementById('clearBtn').click();
+    await loadPOs();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: '+e.message,'error');
+    document.getElementById('savePOBtn').disabled=false;
+  } finally { showLoading(false); }
+});
+
+// ===== LOAD POs =====
+async function loadPOs() {
+  const { data } = await db.from('purchase_orders')
+    .select('id,internal_ref,po_number,status,created_by,created_at,suppliers(name),po_items(id)')
+    .order('created_at',{ascending:false});
+  allPOs = data||[];
+  renderPOs();
+}
+
+function renderPOs() {
+  const filtered = currentFilter==='all' ? allPOs : allPOs.filter(p=>p.status===currentFilter);
+  const body=document.getElementById('poBody');
+  const empty=document.getElementById('poEmpty');
+  if (!filtered.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const statusMap = { open:'<span class="status-badge s-available">รอรับ</span>', partial:'<span class="status-badge s-in_progress">รับบางส่วน</span>', closed:'<span class="status-badge s-depleted">ปิดแล้ว</span>' };
+  body.innerHTML=filtered.map(p=>`<tr>
+    <td><span class="lot-num">${p.internal_ref}</span></td>
+    <td>${p.po_number ? `<span style="font-weight:600;">${p.po_number}</span>` : '<span style="color:var(--ink-soft);font-size:12px;">ยังไม่มี</span>'}</td>
+    <td>${p.suppliers?.name||'-'}</td>
+    <td>${p.created_by||'-'}</td>
+    <td>${fmtDate(p.created_at)}</td>
+    <td style="text-align:center;">${p.po_items?.length||0}</td>
+    <td>${statusMap[p.status]||p.status}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="openDetail('${p.id}')">ดู</button></td>
+  </tr>`).join('');
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter=btn.dataset.status;
+    renderPOs();
+  });
+});
+
+// ===== DETAIL MODAL =====
+window.openDetail = async function(poId) {
+  detailPoId = poId;
+  showLoading(true);
+  const [poRes, itemsRes] = await Promise.all([
+    db.from('purchase_orders').select('*,suppliers(name)').eq('id',poId).single(),
+    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
+  ]);
+  showLoading(false);
+  const po = poRes.data;
+  const items = itemsRes.data||[];
+
+  document.getElementById('poDetailTitle').textContent = `${po.internal_ref}${po.po_number?' / '+po.po_number:''}`;
+  document.getElementById('poDetailSub').textContent = `${po.suppliers?.name||'-'} | ${po.created_by||''} | ${fmtDate(po.created_at)}`;
+  document.getElementById('editPoNumber').value = po.po_number||'';
+
+  const closable = po.status !== 'closed';
+  document.getElementById('closePOBtn').style.display = closable ? '' : 'none';
+
+  document.getElementById('poDetailBody').innerHTML = items.map(it=>{
+    const remain = it.qty_ordered - it.qty_received;
+    const color = remain<=0 ? 'var(--green)' : remain<it.qty_ordered ? 'var(--amber)' : 'var(--ink-soft)';
+    return `<tr>
+      <td>${it.materials?.name||'-'} <span class="lot-num" style="font-size:11px;">${it.materials?.sku||''}</span></td>
+      <td style="text-align:right;">${fmtQty(it.qty_ordered)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--green-deep);">${fmtQty(it.qty_received)}</td>
+      <td style="text-align:right;font-weight:700;color:${color};">${fmtQty(Math.max(0,remain))}</td>
+      <td>${it.unit}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('poDetailModal').classList.add('show');
+};
+
+document.getElementById('savePoNumberBtn').addEventListener('click', async ()=>{
+  if (!detailPoId) return;
+  const poNum = document.getElementById('editPoNumber').value.trim()||null;
+  const { error } = await db.from('purchase_orders').update({ po_number:poNum }).eq('id',detailPoId);
+  if (error) { showToast(error.message,'error'); return; }
+  showToast('บันทึกเลข PO สำเร็จ');
+  await loadPOs();
+  await openDetail(detailPoId);
+});
+
+document.getElementById('closePOBtn').addEventListener('click', async ()=>{
+  if (!detailPoId || !confirm('ยืนยันจบ PO? ของที่ยังไม่ได้รับจะถือว่าสิ้นสุด')) return;
+  const { error } = await db.from('purchase_orders').update({ status:'closed', closed_at:new Date().toISOString() }).eq('id',detailPoId);
+  if (error) { showToast(error.message,'error'); return; }
+  showToast('ปิด PO สำเร็จ');
+  document.getElementById('poDetailModal').classList.remove('show');
+  await loadPOs();
+});
+
+// ===== INIT =====
+(async function init(){
+  showLoading(true);
+  await loadMaster();
+  await loadPOs();
+  showLoading(false);
+})();
+
+})();
+</script>
+</body>
+</html>

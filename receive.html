@@ -23,6 +23,7 @@
   </div>
   <div class="nav-section">
     <div class="nav-label">การดำเนินงาน</div>
+    <a href="po.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>ใบสั่งซื้อ (PO)</a>
     <a href="receive.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>รับสินค้า</a>
     <a href="qc.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ตรวจสอบคุณภาพ (QC)</a>
     <a href="inventory.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>คลังสินค้า</a>
@@ -44,6 +45,32 @@
   <div class="page-title">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
     รับสินค้า
+  </div>
+
+  <!-- STEP 0: เลือก PO (optional) -->
+  <div class="card" style="background:#F0F7F0;border-color:#B8D8BA;">
+    <div class="card-title" style="color:var(--green-deep);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      เลือกใบสั่งซื้อ (PO) <span style="font-weight:400;font-size:12px;color:var(--ink-soft);">— ไม่บังคับ</span>
+    </div>
+    <div class="row" style="align-items:flex-end;">
+      <div class="field-lg">
+        <label>PO ที่ต้องการรับ</label>
+        <select id="poSelect">
+          <option value="">— รับแบบไม่อ้างอิง PO —</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="clearPOBtn" style="margin-bottom:2px;display:none;">✕ ยกเลิก PO</button>
+    </div>
+    <div id="poItemsPreview" style="display:none;margin-top:12px;">
+      <div style="font-size:12.5px;font-weight:600;color:var(--green-deep);margin-bottom:6px;">รายการใน PO:</div>
+      <div class="table-wrap">
+        <table style="font-size:12.5px;">
+          <thead><tr><th>วัตถุดิบ</th><th style="text-align:right;">สั่ง</th><th style="text-align:right;">รับแล้ว</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th></tr></thead>
+          <tbody id="poPreviewBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- STEP 1: ข้อมูลการรับ -->
@@ -166,21 +193,78 @@
 <script>
 (function(){
 
-let suppliers = [], materials = [], operators = [];
+let suppliers = [], materials = [], operators = [], openPOs = [];
 let cart = [];
 let matSelected = null;
+let selectedPO = null;
+let selectedPOItems = [];
 
 // ===== LOAD MASTER DATA =====
 async function loadMaster() {
-  const [supRes, matRes, oprRes] = await Promise.all([
+  const [supRes, matRes, oprRes, poRes] = await Promise.all([
     db.from('suppliers').select('id,code,name').eq('is_active',true).order('code'),
     db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
+    db.from('purchase_orders').select('id,internal_ref,po_number,supplier_id,suppliers(code,name)').in('status',['open','partial']).order('created_at',{ascending:false}),
   ]);
   suppliers = supRes.data || [];
   materials = matRes.data || [];
   operators = oprRes.data || [];
+  openPOs   = poRes.data  || [];
+  renderPOSelect();
 }
+
+function renderPOSelect() {
+  const sel = document.getElementById('poSelect');
+  sel.innerHTML = '<option value="">— รับแบบไม่อ้างอิง PO —</option>'
+    + openPOs.map(p=>`<option value="${p.id}">${p.internal_ref}${p.po_number?' / '+p.po_number:''} — ${p.suppliers?.name||''}</option>`).join('');
+}
+
+document.getElementById('poSelect').addEventListener('change', async function() {
+  const poId = this.value;
+  if (!poId) {
+    selectedPO = null; selectedPOItems = [];
+    document.getElementById('poItemsPreview').style.display='none';
+    document.getElementById('clearPOBtn').style.display='none';
+    return;
+  }
+  showLoading(true);
+  const [poRes, itemsRes] = await Promise.all([
+    db.from('purchase_orders').select('*,suppliers(id,code,name)').eq('id',poId).single(),
+    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
+  ]);
+  showLoading(false);
+  selectedPO = poRes.data;
+  selectedPOItems = itemsRes.data||[];
+
+  // auto-fill supplier
+  const sup = selectedPO.suppliers;
+  if (sup) {
+    document.getElementById('supInput').value = `${sup.code} — ${sup.name}`;
+    document.getElementById('supId').value = sup.id;
+  }
+
+  // show preview
+  document.getElementById('poItemsPreview').style.display='block';
+  document.getElementById('clearPOBtn').style.display='';
+  document.getElementById('poPreviewBody').innerHTML = selectedPOItems.map(it=>{
+    const remain = it.qty_ordered - it.qty_received;
+    const color = remain<=0?'var(--green)':remain<it.qty_ordered?'var(--amber)':'var(--ink)';
+    return `<tr>
+      <td>${it.materials?.name||'-'} <span class="lot-num" style="font-size:11px;">${it.materials?.sku||''}</span></td>
+      <td style="text-align:right;">${fmtQty(it.qty_ordered)}</td>
+      <td style="text-align:right;color:var(--green-deep);font-weight:700;">${fmtQty(it.qty_received)}</td>
+      <td style="text-align:right;font-weight:700;color:${color};">${fmtQty(Math.max(0,remain))}</td>
+      <td>${it.unit}</td>
+    </tr>`;
+  }).join('');
+  checkConfirm();
+});
+
+document.getElementById('clearPOBtn').addEventListener('click', ()=>{
+  document.getElementById('poSelect').value='';
+  document.getElementById('poSelect').dispatchEvent(new Event('change'));
+});
 
 // ===== COMBOS =====
 setupCombo({
@@ -316,25 +400,40 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     // 2. Insert receive_order
     const { data: roData, error: roErr } = await db
       .from('receive_orders')
-      .insert({ ro_number: roNumber, supplier_id: supId, receive_date: receiveDate, operator, vehicle_no: vehicleNo, note: roNote, status: 'confirmed' })
+      .insert({ ro_number: roNumber, supplier_id: supId, receive_date: receiveDate, operator, vehicle_no: vehicleNo, note: roNote, status: 'confirmed', po_id: selectedPO?.id||null })
       .select('id').single();
     if (roErr) throw roErr;
 
     // 3. สำหรับแต่ละรายการใน cart
     for (const item of cart) {
+      // คำนวณจำนวนจริงที่จะเข้าระบบ (cap ถ้าเกิน PO)
+      let qtyToStock = item.qty;
+      let itemNote = item.note||null;
+      if (selectedPO) {
+        const poItem = selectedPOItems.find(p=>p.material_id===item.material_id);
+        if (poItem) {
+          const remain = poItem.qty_ordered - poItem.qty_received;
+          if (item.qty > remain && remain > 0) {
+            const over = (item.qty - remain).toFixed(3);
+            qtyToStock = remain;
+            itemNote = (itemNote ? itemNote+' | ' : '') + `น้ำหนักจริง ${item.qty} ${item.unit} (เกิน ${over})`;
+          }
+        }
+      }
+
       // insert receive_item
       const { data: riData, error: riErr } = await db
         .from('receive_items')
         .insert({
           ro_id: roData.id, material_id: item.material_id,
-          qty: item.qty, unit: item.unit,
+          qty: qtyToStock, unit: item.unit,
           supplier_lot: item.supplier_lot, mfg_date: item.mfg_date,
-          exp_date: item.exp_date, note: item.note,
+          exp_date: item.exp_date, note: itemNote,
         })
         .select('id').single();
       if (riErr) throw riErr;
 
-      // สร้าง RM Lot อัตโนมัติ (status = qc_pending)
+      // สร้าง RM Lot (status = qc_pending)
       const lotNumber = await generateLotNumber('RM');
       const { data: lotData, error: lotErr } = await db
         .from('rm_lots')
@@ -342,21 +441,39 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
           lot_number: lotNumber, material_id: item.material_id,
           ro_item_id: riData.id, supplier_id: supId,
           supplier_lot: item.supplier_lot, receive_date: receiveDate,
-          exp_date: item.exp_date, initial_qty: item.qty,
+          exp_date: item.exp_date, initial_qty: qtyToStock,
           unit: item.unit, status: 'qc_pending',
         })
         .select('id').single();
       if (lotErr) throw lotErr;
 
-      // สร้าง rm_stock (qty_on_hand = 0 รอ QC pass)
-      const { error: stErr } = await db
-        .from('rm_stock')
-        .insert({ lot_id: lotData.id, qty_on_hand: 0 });
+      const { error: stErr } = await db.from('rm_stock').insert({ lot_id: lotData.id, qty_on_hand: 0 });
       if (stErr) throw stErr;
+
+      // อัปเดต qty_received ใน po_items
+      if (selectedPO) {
+        const poItem = selectedPOItems.find(p=>p.material_id===item.material_id);
+        if (poItem) {
+          const newReceived = poItem.qty_received + qtyToStock;
+          await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
+        }
+      }
+    }
+
+    // อัปเดตสถานะ PO
+    if (selectedPO) {
+      const { data: updatedItems } = await db.from('po_items').select('qty_ordered,qty_received').eq('po_id', selectedPO.id);
+      const allDone = (updatedItems||[]).every(it => it.qty_received >= it.qty_ordered);
+      const anyDone = (updatedItems||[]).some(it => it.qty_received > 0);
+      const newStatus = allDone ? 'closed' : anyDone ? 'partial' : 'open';
+      await db.from('purchase_orders').update({
+        status: newStatus,
+        ...(newStatus==='closed' ? { closed_at: new Date().toISOString() } : {}),
+      }).eq('id', selectedPO.id);
     }
 
     showToast(`บันทึกใบรับ ${roNumber} สำเร็จ — รอ QC ตรวจสอบ ${cart.length} รายการ`);
-    cart = [];
+    cart = []; selectedPO = null; selectedPOItems = [];
     renderCart();
     document.getElementById('supInput').value = '';
     document.getElementById('supId').value = '';
@@ -364,6 +481,10 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('vehicleNo').value = '';
     document.getElementById('roNote').value = '';
     document.getElementById('receiveDate').value = toDateInput();
+    document.getElementById('poSelect').value = '';
+    document.getElementById('poItemsPreview').style.display = 'none';
+    document.getElementById('clearPOBtn').style.display = 'none';
+    await loadMaster();
     await loadRecentRO();
 
   } catch(e) {
