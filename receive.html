@@ -23,6 +23,29 @@
 .po-recv-inputs .field { min-width:120px; flex:1; margin:0; }
 .po-recv-inputs label { font-size:11.5px; margin-bottom:3px; }
 .po-recv-inputs input { font-size:13.5px; padding:6px 8px; }
+
+/* PO Picker Modal */
+.po-picker-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px; }
+.po-picker-modal { background:var(--bg);border-radius:14px;width:100%;max-width:860px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.po-picker-header { padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.po-picker-search { flex:1;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit; }
+.po-picker-body { overflow-y:auto;flex:1; }
+.po-picker-footer { padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap; }
+.po-picker-table tr.po-pick-row { cursor:pointer; transition:background .12s; }
+.po-picker-table tr.po-pick-row:hover td { background:var(--surface); }
+.po-mat-list { margin:3px 0 0;display:flex;flex-wrap:wrap;gap:3px; }
+.po-mat-chip { font-size:11px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink-soft); }
+.po-mat-chip.over { border-color:var(--amber);color:var(--amber); }
+.pager-btn { padding:4px 10px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);cursor:pointer;font-size:13px;font-family:inherit; }
+.pager-btn:disabled { opacity:.4;cursor:default; }
+.pager-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
+
+/* Dashboard pending */
+.pending-badge { display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.pending-open { background:#D1FAE5;color:#065F46; }
+.pending-partial { background:#FEF3C7;color:#92400E; }
+.po-dash-btn { padding:4px 12px;font-size:12.5px;border-radius:6px;border:1.5px solid var(--green-deep);background:var(--bg);color:var(--green-deep);cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap; }
+.po-dash-btn:hover { background:var(--green-deep);color:#fff; }
 </style>
 </head>
 <body>
@@ -59,29 +82,32 @@
     รับสินค้า
   </div>
 
-  <!-- STEP 0: เลือก PO (optional) -->
+  <!-- DASHBOARD: รอรับสินค้า -->
+  <div class="card" id="poDashboardCard">
+    <div class="card-title" style="color:var(--green-deep);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      รอรับสินค้า
+      <span id="poDashCount" style="margin-left:6px;font-size:12px;font-weight:400;color:var(--ink-soft);"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="po-picker-table" style="font-size:13px;">
+        <thead><tr><th>เลขที่</th><th>ร้านค้า</th><th>วัตถุดิบที่รอรับ</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="poDashBody"></tbody>
+      </table>
+    </div>
+    <div id="poDashEmpty" class="empty-row" style="display:none;">ไม่มี PO ที่รอรับสินค้า</div>
+  </div>
+
+  <!-- STEP 0: เลือก PO -->
   <div class="card" style="background:#F0F7F0;border-color:#B8D8BA;">
     <div class="card-title" style="color:var(--green-deep);">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      เลือกใบสั่งซื้อ (PO) <span style="font-weight:400;font-size:12px;color:var(--ink-soft);">— ไม่บังคับ</span>
+      เลือกใบสั่งซื้อ (PO) <span style="color:var(--red);font-size:12px;">*</span>
     </div>
-    <div class="row" style="align-items:flex-end;">
-      <div class="field-lg">
-        <label>PO ที่ต้องการรับ <span style="color:var(--red);">*</span></label>
-        <select id="poSelect">
-          <option value="" disabled selected>— เลือก PO —</option>
-        </select>
-      </div>
-      <button class="btn btn-ghost btn-sm" id="clearPOBtn" style="margin-bottom:2px;display:none;">✕ เปลี่ยน PO</button>
-    </div>
-    <div id="poItemsPreview" style="display:none;margin-top:12px;">
-      <div style="font-size:12.5px;font-weight:600;color:var(--green-deep);margin-bottom:6px;">รายการใน PO:</div>
-      <div class="table-wrap">
-        <table style="font-size:12.5px;">
-          <thead><tr><th>วัตถุดิบ</th><th style="text-align:right;">สั่ง</th><th style="text-align:right;">รับแล้ว</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th></tr></thead>
-          <tbody id="poPreviewBody"></tbody>
-        </table>
-      </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div id="poSelectedDisplay" style="flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px;color:var(--ink-soft);">— ยังไม่ได้เลือก PO —</div>
+      <button class="btn btn-primary btn-sm" id="openPOPickerBtn">เลือก PO</button>
+      <button class="btn btn-ghost btn-sm" id="clearPOBtn" style="display:none;">✕ เปลี่ยน</button>
     </div>
   </div>
 
@@ -193,6 +219,34 @@
   </div>
 </main>
 
+<!-- Modal: PO Picker -->
+<div class="po-picker-overlay" id="poPickerOverlay" style="display:none;">
+  <div class="po-picker-modal">
+    <div class="po-picker-header">
+      <div style="font-weight:700;font-size:15px;color:var(--green-deep);">เลือกใบสั่งซื้อ</div>
+      <input class="po-picker-search" type="text" id="poPickerSearch" placeholder="ค้นหา เลขที่ / ร้านค้า / วัตถุดิบ...">
+      <button class="modal-close" id="poPickerClose">✕</button>
+    </div>
+    <div class="po-picker-body">
+      <div class="table-wrap" style="margin:0;">
+        <table class="po-picker-table" style="font-size:13px;">
+          <thead><tr><th>เลขที่</th><th>อ้างอิง PO</th><th>ร้านค้า</th><th>วัตถุดิบ</th><th>สถานะ</th></tr></thead>
+          <tbody id="poPickerBody"></tbody>
+        </table>
+      </div>
+      <div id="poPickerEmpty" class="empty-row" style="display:none;">ไม่พบ PO ที่ตรงกัน</div>
+    </div>
+    <div class="po-picker-footer">
+      <div id="poPickerInfo" style="font-size:13px;color:var(--ink-soft);"></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="pager-btn" id="ppPrev">‹ ก่อนหน้า</button>
+        <div id="ppPages" style="display:flex;gap:4px;"></div>
+        <button class="pager-btn" id="ppNext">ถัดไป ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: รายละเอียดใบรับ -->
 <div class="modal-overlay" id="roDetailOverlay" style="display:none;">
   <div class="modal" style="max-width:780px;width:95%;">
@@ -238,7 +292,7 @@
 <script>
 (function(){
 
-let suppliers = [], materials = [], operators = [], openPOs = [];
+let suppliers = [], materials = [], operators = [], openPOs = [], allPOItems = [];
 let cart = [];
 let matSelected = null;
 let selectedPO = null;
@@ -250,20 +304,164 @@ async function loadMaster() {
     db.from('suppliers').select('id,code,name').eq('is_active',true).order('code'),
     db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
-    db.from('purchase_orders').select('id,internal_ref,po_number,supplier_id,suppliers(code,name)').in('status',['open','partial']).order('created_at',{ascending:false}),
+    db.from('purchase_orders').select('id,internal_ref,po_number,supplier_id,status,suppliers(code,name)').in('status',['open','partial']).order('created_at',{ascending:false}),
   ]);
   suppliers = supRes.data || [];
   materials = matRes.data || [];
   operators = oprRes.data || [];
   openPOs   = poRes.data  || [];
-  renderPOSelect();
+
+  // load all po_items for open POs
+  allPOItems = [];
+  if (openPOs.length) {
+    const poIds = openPOs.map(p=>p.id);
+    const { data: itemsData } = await db.from('po_items').select('id,po_id,material_id,qty_ordered,qty_received,unit,materials(sku,name)').in('po_id', poIds);
+    allPOItems = itemsData || [];
+  }
+
+  renderPODashboard();
 }
 
-function renderPOSelect() {
-  const sel = document.getElementById('poSelect');
-  sel.innerHTML = '<option value="">— รับแบบไม่อ้างอิง PO —</option>'
-    + openPOs.map(p=>`<option value="${p.id}">${p.internal_ref}${p.po_number?' / '+p.po_number:''} — ${p.suppliers?.name||''}</option>`).join('');
+// ===== DASHBOARD: รอรับสินค้า =====
+function renderPODashboard() {
+  const body  = document.getElementById('poDashBody');
+  const empty = document.getElementById('poDashEmpty');
+  const count = document.getElementById('poDashCount');
+  if (!openPOs.length) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    count.textContent = '';
+    return;
+  }
+  empty.style.display = 'none';
+  count.textContent = `(${openPOs.length} ใบ)`;
+  body.innerHTML = openPOs.map(po => {
+    const items = allPOItems.filter(it => it.po_id === po.id && (it.qty_ordered - it.qty_received) > 0);
+    const chips = items.map(it => {
+      const remain = (it.qty_ordered - it.qty_received).toFixed(2).replace(/\.?0+$/,'');
+      return `<span class="po-mat-chip">${it.materials?.name||'-'} <b>${remain}</b> ${it.unit}</span>`;
+    }).join('');
+    const badge = po.status === 'open'
+      ? `<span class="pending-badge pending-open">ใหม่</span>`
+      : `<span class="pending-badge pending-partial">รับบางส่วน</span>`;
+    return `<tr class="po-pick-row" data-id="${po.id}" style="cursor:pointer;">
+      <td><span class="lot-num">${po.internal_ref}</span>${po.po_number?`<br><span style="font-size:11.5px;color:var(--ink-soft);">${po.po_number}</span>`:''}</td>
+      <td>${po.suppliers?.name||'-'}</td>
+      <td><div class="po-mat-list">${chips||'<span style="color:var(--ink-soft);font-size:12px;">ครบแล้ว</span>'}</div></td>
+      <td>${badge}</td>
+      <td><button class="po-dash-btn" onclick="selectPOById('${po.id}')">รับสินค้า →</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('.po-pick-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.tagName === 'BUTTON') return;
+      selectPOById(row.dataset.id);
+    });
+  });
 }
+
+// ===== PO PICKER =====
+let ppPage = 0, ppPageSize = 8, ppFiltered = [];
+
+function openPOPicker() {
+  ppPage = 0;
+  document.getElementById('poPickerSearch').value = '';
+  renderPicker('');
+  document.getElementById('poPickerOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('poPickerSearch').focus(), 50);
+}
+
+function renderPicker(q) {
+  q = (q||'').toLowerCase();
+  ppFiltered = openPOs.filter(po => {
+    if (!q) return true;
+    const items = allPOItems.filter(it => it.po_id === po.id);
+    return po.internal_ref.toLowerCase().includes(q)
+      || (po.po_number||'').toLowerCase().includes(q)
+      || (po.suppliers?.name||'').toLowerCase().includes(q)
+      || items.some(it => (it.materials?.name||'').toLowerCase().includes(q) || (it.materials?.sku||'').toLowerCase().includes(q));
+  });
+  renderPickerPage();
+}
+
+function renderPickerPage() {
+  const total   = ppFiltered.length;
+  const pages   = Math.max(1, Math.ceil(total / ppPageSize));
+  ppPage = Math.min(ppPage, pages - 1);
+  const slice   = ppFiltered.slice(ppPage * ppPageSize, (ppPage + 1) * ppPageSize);
+
+  const body  = document.getElementById('poPickerBody');
+  const empty = document.getElementById('poPickerEmpty');
+  document.getElementById('poPickerInfo').textContent = total ? `แสดง ${ppPage*ppPageSize+1}–${Math.min((ppPage+1)*ppPageSize,total)} จาก ${total} รายการ` : '';
+
+  if (!slice.length) { body.innerHTML=''; empty.style.display='block'; }
+  else {
+    empty.style.display = 'none';
+    body.innerHTML = slice.map(po => {
+      const items = allPOItems.filter(it => it.po_id === po.id);
+      const chips = items.map(it => {
+        const remain = it.qty_ordered - it.qty_received;
+        const cls = remain <= 0 ? 'over' : '';
+        return `<span class="po-mat-chip ${cls}">${it.materials?.name||'-'} · ${remain > 0 ? fmtQty(remain) : 'ครบ'} ${it.unit}</span>`;
+      }).join('');
+      const badge = po.status==='open'
+        ? `<span class="pending-badge pending-open">ใหม่</span>`
+        : `<span class="pending-badge pending-partial">บางส่วน</span>`;
+      return `<tr class="po-pick-row" data-id="${po.id}">
+        <td><span class="lot-num">${po.internal_ref}</span></td>
+        <td style="color:var(--ink-soft);font-size:12.5px;">${po.po_number||'-'}</td>
+        <td>${po.suppliers?.name||'-'}</td>
+        <td><div class="po-mat-list">${chips}</div></td>
+        <td>${badge}</td>
+      </tr>`;
+    }).join('');
+    body.querySelectorAll('.po-pick-row').forEach(row => {
+      row.addEventListener('click', () => { selectPOById(row.dataset.id); document.getElementById('poPickerOverlay').style.display='none'; });
+    });
+  }
+
+  // page buttons
+  const ppPages = document.getElementById('ppPages');
+  ppPages.innerHTML = Array.from({length: pages}, (_,i) =>
+    `<button class="pager-btn${i===ppPage?' active':''}" onclick="ppPage=${i};renderPickerPage();">${i+1}</button>`
+  ).join('');
+  document.getElementById('ppPrev').disabled = ppPage === 0;
+  document.getElementById('ppNext').disabled = ppPage >= pages - 1;
+}
+
+document.getElementById('openPOPickerBtn').addEventListener('click', openPOPicker);
+document.getElementById('poPickerClose').addEventListener('click', () => { document.getElementById('poPickerOverlay').style.display='none'; });
+document.getElementById('poPickerOverlay').addEventListener('click', function(e) { if(e.target===this) this.style.display='none'; });
+document.getElementById('ppPrev').addEventListener('click', () => { ppPage--; renderPickerPage(); });
+document.getElementById('ppNext').addEventListener('click', () => { ppPage++; renderPickerPage(); });
+document.getElementById('poPickerSearch').addEventListener('input', function() { ppPage=0; renderPicker(this.value); });
+
+// ===== SELECT PO (shared by dashboard + picker) =====
+window.selectPOById = async function(poId) {
+  showLoading(true);
+  const [poRes, itemsRes] = await Promise.all([
+    db.from('purchase_orders').select('*,suppliers(id,code,name)').eq('id',poId).single(),
+    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
+  ]);
+  showLoading(false);
+  selectedPO = poRes.data;
+  selectedPOItems = itemsRes.data||[];
+
+  const sup = selectedPO.suppliers;
+  if (sup) document.getElementById('supId').value = sup.id;
+
+  const ref = selectedPO.internal_ref + (selectedPO.po_number ? ' / '+selectedPO.po_number : '');
+  document.getElementById('poSelectedDisplay').textContent = `${ref}  —  ${sup?.name||''}`;
+  document.getElementById('poSelectedDisplay').style.color = 'var(--ink)';
+  document.getElementById('clearPOBtn').style.display = '';
+  document.getElementById('openPOPickerBtn').style.display = 'none';
+  document.getElementById('poPickerOverlay').style.display = 'none';
+  document.getElementById('poReceiveCard').style.display = '';
+  renderPOReceiveRows();
+  checkConfirm();
+  // scroll to step 1
+  document.querySelector('.card:has(#supId)').scrollIntoView({behavior:'smooth',block:'start'});
+};
 
 function renderPOReceiveRows() {
   const wrap  = document.getElementById('poReceiveRows');
@@ -311,39 +509,15 @@ function renderPOReceiveRows() {
   wrap.querySelectorAll('.pr-qty').forEach(inp => inp.addEventListener('input', checkConfirm));
 }
 
-document.getElementById('poSelect').addEventListener('change', async function() {
-  const poId = this.value;
-  if (!poId) {
-    selectedPO = null; selectedPOItems = [];
-    document.getElementById('clearPOBtn').style.display='none';
-    document.getElementById('poReceiveCard').style.display='none';
-    checkConfirm();
-    return;
-  }
-  showLoading(true);
-  const [poRes, itemsRes] = await Promise.all([
-    db.from('purchase_orders').select('*,suppliers(id,code,name)').eq('id',poId).single(),
-    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
-  ]);
-  showLoading(false);
-  selectedPO = poRes.data;
-  selectedPOItems = itemsRes.data||[];
-
-  // set supId from PO
-  const sup = selectedPO.suppliers;
-  if (sup) document.getElementById('supId').value = sup.id;
-
-  document.getElementById('clearPOBtn').style.display='';
-  document.getElementById('poItemsPreview').style.display='none';
-  document.getElementById('manualAddCard').style.display='none';
-  document.getElementById('poReceiveCard').style.display='';
-  renderPOReceiveRows();
+document.getElementById('clearPOBtn').addEventListener('click', () => {
+  selectedPO = null; selectedPOItems = [];
+  document.getElementById('supId').value = '';
+  document.getElementById('poSelectedDisplay').textContent = '— ยังไม่ได้เลือก PO —';
+  document.getElementById('poSelectedDisplay').style.color = 'var(--ink-soft)';
+  document.getElementById('clearPOBtn').style.display = 'none';
+  document.getElementById('openPOPickerBtn').style.display = '';
+  document.getElementById('poReceiveCard').style.display = 'none';
   checkConfirm();
-});
-
-document.getElementById('clearPOBtn').addEventListener('click', ()=>{
-  document.getElementById('poSelect').value='';
-  document.getElementById('poSelect').dispatchEvent(new Event('change'));
 });
 
 // ===== COMBOS =====
@@ -575,9 +749,10 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('vehicleNo').value = '';
     document.getElementById('roNote').value = '';
     document.getElementById('receiveDate').value = toDateInput();
-    document.getElementById('poSelect').value = '';
-    document.getElementById('poItemsPreview').style.display = 'none';
+    document.getElementById('poSelectedDisplay').textContent = '— ยังไม่ได้เลือก PO —';
+    document.getElementById('poSelectedDisplay').style.color = 'var(--ink-soft)';
     document.getElementById('clearPOBtn').style.display = 'none';
+    document.getElementById('openPOPickerBtn').style.display = '';
     document.getElementById('poReceiveCard').style.display = 'none';
     await loadMaster();
     await loadRecentRO();
