@@ -672,17 +672,17 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
     // 3. สำหรับแต่ละรายการใน cart
     for (const item of cart) {
-      // คำนวณจำนวนจริงที่จะเข้าระบบ (cap ถ้าเกิน PO)
-      let qtyToStock = item.qty;
+      // รับเต็มน้ำหนักจริงเสมอ — ส่วนเกินจาก PO เก็บใน qty_over
+      const qtyToStock = item.qty;
       let itemNote = item.note||null;
+      let qtyOver = 0;
       if (selectedPO) {
         const poItem = selectedPOItems.find(p=>p.material_id===item.material_id);
         if (poItem) {
           const remain = poItem.qty_ordered - poItem.qty_received;
           if (item.qty > remain && remain > 0) {
-            const over = (item.qty - remain).toFixed(3);
-            qtyToStock = remain;
-            itemNote = (itemNote ? itemNote+' | ' : '') + `น้ำหนักจริง ${item.qty} ${item.unit} (เกิน ${over})`;
+            qtyOver = parseFloat((item.qty - remain).toFixed(3));
+            itemNote = (itemNote ? itemNote+' | ' : '') + `รับเกิน PO ${qtyOver} ${item.unit}`;
           }
         }
       }
@@ -692,7 +692,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         .from('receive_items')
         .insert({
           ro_id: roData.id, material_id: item.material_id,
-          qty: qtyToStock, unit: item.unit,
+          qty: qtyToStock, unit: item.unit, qty_over: qtyOver,
           supplier_lot: item.supplier_lot, mfg_date: item.mfg_date,
           exp_date: item.exp_date, note: itemNote,
         })
@@ -722,7 +722,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
           ? selectedPOItems.find(p=>p.id===item._poItemId)
           : selectedPOItems.find(p=>p.material_id===item.material_id);
         if (poItem) {
-          const newReceived = poItem.qty_received + qtyToStock;
+          // ตัดยอด PO ไม่เกินจำนวนสั่ง (ส่วนเกินเข้าสต็อกแล้วผ่าน qty)
+          const newReceived = Math.min(poItem.qty_received + qtyToStock, poItem.qty_ordered);
           await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
         }
       }
@@ -835,7 +836,7 @@ async function openRODetail(roId) {
     empty.style.display='none';
     body.innerHTML = items.map(it => {
       const noteText = it.note||'';
-      const isOver = noteText.includes('น้ำหนักจริง');
+      const isOver = noteText.includes('น้ำหนักจริง') || noteText.includes('รับเกิน') || (it.qty_over||0) > 0;
       return `<tr>
         <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
         <td>${it.materials?.name||'-'}</td>

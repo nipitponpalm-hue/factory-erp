@@ -840,6 +840,7 @@ document.getElementById('resetConfirmOkBtn').addEventListener('click', async () 
     // ลบตามลำดับ FK (child → parent)
     // ลำดับ: child → parent (ตาม FK constraint)
     const tables = [
+      'stock_adjustments',
       'po_items',
       'issue_items',
       'repack_outputs',

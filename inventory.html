@@ -163,6 +163,47 @@
   </div>
 </div>
 
+<!-- STOCK ADJUSTMENT MODAL -->
+<div class="modal-overlay" id="adjModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">ตัดสต็อก</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="adjModalSub"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('adjModal').classList.remove('show')">✕</button>
+    </div>
+    <div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>จำนวนที่ตัดออก * <span id="adjMaxLabel" style="color:var(--ink-soft);font-weight:400;"></span></label>
+        <input type="number" id="adjQty" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>เหตุผล *</label>
+        <select id="adjReason">
+          <option value="" disabled selected>— เลือกเหตุผล —</option>
+          <option value="giveaway">มอบให้ / ของแถม</option>
+          <option value="spoilage">เน่าเสีย</option>
+          <option value="lost">สูญหาย</option>
+          <option value="other">อื่นๆ</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>ผู้ดำเนินการ *</label>
+        <input type="text" id="adjOperator" placeholder="ชื่อผู้ตัดสต็อก">
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label>หมายเหตุ</label>
+        <input type="text" id="adjNote" placeholder="เช่น มอบให้คุณ...">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="document.getElementById('adjModal').classList.remove('show')">ยกเลิก</button>
+        <button class="btn btn-primary" id="adjConfirmBtn" style="background:var(--red);border-color:var(--red);">✓ ยืนยันตัดสต็อก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -175,6 +216,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/lot.js"></script>
 <script>
 (function(){
 
@@ -277,7 +319,10 @@ function renderLots(search='', status='') {
     <td>${l.unit}</td>
     <td>${l.suppliers?.name||'-'}</td>
     <td><span class="status-badge ${statusCls[l.status]||''}">${statusLabel[l.status]||l.status}</span></td>
-    <td><button class="btn btn-ghost btn-sm" onclick="showLotDetail('${l.id}')">รายละเอียด</button></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-ghost btn-sm" onclick="showLotDetail('${l.id}')">รายละเอียด</button>
+      ${l.status==='available' && (l.rm_stock?.qty_on_hand||0)>0 ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openAdjModal('${l.id}')">ตัดสต็อก</button>` : ''}
+    </td>
   </tr>`).join('');
 }
 
@@ -361,6 +406,73 @@ document.getElementById('txnSearch').addEventListener('input', e => renderTxn(e.
 document.getElementById('txnTypeFilter').addEventListener('change', e => renderTxn(document.getElementById('txnSearch').value, e.target.value));
 
 window.showLotDetail = showLotDetail;
+
+// ===== STOCK ADJUSTMENT =====
+let adjLot = null;
+
+window.openAdjModal = function(lotId) {
+  adjLot = allLots.find(l => l.id === lotId);
+  if (!adjLot) return;
+  const onHand = adjLot.rm_stock?.qty_on_hand || 0;
+  document.getElementById('adjModalSub').textContent = `${adjLot.lot_number} — ${adjLot.materials?.name||''} (คงเหลือ ${fmtQty(onHand)} ${adjLot.unit})`;
+  document.getElementById('adjMaxLabel').textContent = `(สูงสุด ${fmtQty(onHand)} ${adjLot.unit})`;
+  document.getElementById('adjQty').value = '';
+  document.getElementById('adjQty').max = onHand;
+  document.getElementById('adjReason').value = '';
+  document.getElementById('adjOperator').value = '';
+  document.getElementById('adjNote').value = '';
+  document.getElementById('adjModal').classList.add('show');
+};
+
+const ADJ_REASON_LABEL = { giveaway:'มอบให้/ของแถม', spoilage:'เน่าเสีย', lost:'สูญหาย', other:'อื่นๆ' };
+
+document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
+  if (!adjLot) return;
+  const onHand   = adjLot.rm_stock?.qty_on_hand || 0;
+  const qty      = parseFloat(document.getElementById('adjQty').value);
+  const reason   = document.getElementById('adjReason').value;
+  const operator = document.getElementById('adjOperator').value.trim();
+  const note     = document.getElementById('adjNote').value.trim() || null;
+
+  if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
+  if (qty > onHand)     { showToast(`จำนวนเกินคงเหลือ (${fmtQty(onHand)} ${adjLot.unit})`, 'error'); return; }
+  if (!reason)          { showToast('กรุณาเลือกเหตุผล', 'error'); return; }
+  if (!operator)        { showToast('กรุณาระบุผู้ดำเนินการ', 'error'); return; }
+
+  document.getElementById('adjConfirmBtn').disabled = true;
+  showLoading(true);
+  try {
+    const adjNumber = await generateLotNumber('AJ');
+
+    const { error: adjErr } = await db.from('stock_adjustments').insert({
+      adj_number: adjNumber, lot_id: adjLot.id, qty, unit: adjLot.unit,
+      reason, note, operator,
+    });
+    if (adjErr) throw adjErr;
+
+    const newQty = onHand - qty;
+    const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: newQty }).eq('lot_id', adjLot.id);
+    if (stErr) throw stErr;
+    if (newQty <= 0) await db.from('rm_lots').update({ status: 'depleted' }).eq('id', adjLot.id);
+
+    await db.from('rm_transactions').insert({
+      lot_id: adjLot.id, txn_type: 'adjust', qty: -qty,
+      ref_type: 'stock_adjustment', operator,
+      note: `ตัดสต็อก ${adjNumber} — ${ADJ_REASON_LABEL[reason]}${note ? ' | '+note : ''}`,
+    });
+
+    showToast(`✅ ตัดสต็อก ${adjNumber} สำเร็จ — ${fmtQty(qty)} ${adjLot.unit} (${ADJ_REASON_LABEL[reason]})`);
+    document.getElementById('adjModal').classList.remove('show');
+    adjLot = null;
+    await loadAll();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  } finally {
+    document.getElementById('adjConfirmBtn').disabled = false;
+    showLoading(false);
+  }
+});
 
 // ===== INIT =====
 (async function init() {
