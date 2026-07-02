@@ -881,13 +881,14 @@ window.switchTab = function(tab) {
       // 4. สร้าง RM Lot ใหม่ (SKU เดิม)
       const newLotNumber = await generateLotNumber('RM');
       const { data:newLot, error:lotErr } = await db.from('rm_lots').insert({
-        lot_number:   newLotNumber,
-        material_id:  matId,
-        receive_date: rpDate,
-        exp_date:     expDate,
-        initial_qty:  qtyOut,
+        lot_number:    newLotNumber,
+        material_id:   matId,
+        receive_date:  rpDate,
+        exp_date:      expDate,
+        initial_qty:   qtyOut,
         unit,
-        status:       'available',
+        status:        'available',
+        is_processed:  true,
       }).select('id').single();
       if (lotErr) throw lotErr;
 

@@ -171,7 +171,7 @@ async function loadMaster() {
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
     db.from('rm_lots')
       .select('id,lot_number,exp_date,receive_date,unit,rm_stock(qty_on_hand),materials(sku,name)')
-      .eq('status','available').order('receive_date',{ascending:true}),
+      .eq('status','available').eq('is_processed',true).order('receive_date',{ascending:true}),
     db.from('fg_lots')
       .select('id,lot_number,exp_date,produced_date,unit,fg_stock(qty_on_hand),products(sku,name)')
       .eq('status','available').order('produced_date',{ascending:true}),
