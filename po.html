@@ -75,7 +75,10 @@
       </div>
       <div class="field">
         <label>วันที่ PO</label>
-        <input type="date" id="poDate" lang="en-GB">
+        <div style="position:relative;">
+          <input type="text" id="poDateDisplay" readonly placeholder="วว/ดด/ปปปป" style="cursor:pointer;width:100%;">
+          <input type="date" id="poDate" style="position:absolute;inset:0;opacity:0;">
+        </div>
       </div>
     </div>
     <div class="row" style="margin-top:10px;">
@@ -200,6 +203,17 @@ let allPOs = [];
 let currentFilter = 'all';
 let detailPoId = null;
 
+// ===== PO DATE: hidden native date input (calendar picker) + always dd/mm/yyyy display =====
+function syncPoDateDisplay() {
+  const v = document.getElementById('poDate').value;
+  document.getElementById('poDateDisplay').value = v ? fmtDate(v) : '';
+}
+document.getElementById('poDate').addEventListener('change', syncPoDateDisplay);
+document.getElementById('poDateDisplay').addEventListener('click', () => {
+  const inp = document.getElementById('poDate');
+  if (inp.showPicker) inp.showPicker(); else inp.click();
+});
+
 
 async function loadMaster() {
   const [supRes, matRes] = await Promise.all([
@@ -277,6 +291,7 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
   poCart=[]; renderCart();
   ['poEditId','poNumber','supInput','supId','createdBy','poNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('poDate').value = toDateInput();
+  syncPoDateDisplay();
   document.getElementById('savePOBtn').textContent='✓ สร้างใบสั่งซื้อ';
 });
 
@@ -417,6 +432,7 @@ document.getElementById('closePOBtn').addEventListener('click', async ()=>{
 (async function init(){
   showLoading(true);
   document.getElementById('poDate').value = toDateInput();
+  syncPoDateDisplay();
   await loadMaster();
   await loadPOs();
   showLoading(false);
