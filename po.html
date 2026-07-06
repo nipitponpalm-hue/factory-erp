@@ -75,10 +75,8 @@
       </div>
       <div class="field">
         <label>วันที่ PO</label>
-        <div style="position:relative;">
-          <input type="text" id="poDateDisplay" readonly placeholder="วว/ดด/ปปปป" style="cursor:pointer;width:100%;">
-          <input type="date" id="poDate" style="position:absolute;inset:0;opacity:0;">
-        </div>
+        <input type="date" id="poDate">
+        <div id="poDateDisplay" style="font-size:12px;color:var(--ink-soft);margin-top:3px;"></div>
       </div>
     </div>
     <div class="row" style="margin-top:10px;">
@@ -203,16 +201,13 @@ let allPOs = [];
 let currentFilter = 'all';
 let detailPoId = null;
 
-// ===== PO DATE: hidden native date input (calendar picker) + always dd/mm/yyyy display =====
+// ===== PO DATE: native date input + dd/mm/yyyy confirmation text below =====
 function syncPoDateDisplay() {
   const v = document.getElementById('poDate').value;
-  document.getElementById('poDateDisplay').value = v ? fmtDate(v) : '';
+  document.getElementById('poDateDisplay').textContent = v ? `= ${fmtDate(v)}` : '';
 }
 document.getElementById('poDate').addEventListener('change', syncPoDateDisplay);
-document.getElementById('poDateDisplay').addEventListener('click', () => {
-  const inp = document.getElementById('poDate');
-  if (inp.showPicker) inp.showPicker(); else inp.click();
-});
+document.getElementById('poDate').addEventListener('input', syncPoDateDisplay);
 
 
 async function loadMaster() {
