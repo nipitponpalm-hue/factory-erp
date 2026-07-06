@@ -75,11 +75,7 @@
       </div>
       <div class="field">
         <label>วันที่ PO</label>
-        <div style="display:flex;gap:6px;">
-          <select id="poDateDay" style="flex:1;"></select>
-          <select id="poDateMonth" style="flex:1.4;"></select>
-          <select id="poDateYear" style="flex:1;"></select>
-        </div>
+        <input type="date" id="poDate" lang="en-GB">
       </div>
     </div>
     <div class="row" style="margin-top:10px;">
@@ -204,32 +200,6 @@ let allPOs = [];
 let currentFilter = 'all';
 let detailPoId = null;
 
-// ===== PO DATE (day/month/year dropdowns — always dd/mm/yyyy regardless of browser locale) =====
-const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-
-function initPoDateDropdowns() {
-  const daySel = document.getElementById('poDateDay');
-  const monSel = document.getElementById('poDateMonth');
-  const yrSel  = document.getElementById('poDateYear');
-  daySel.innerHTML = Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-  monSel.innerHTML = TH_MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
-  const curYear = new Date().getFullYear();
-  yrSel.innerHTML = Array.from({length:6},(_,i)=>curYear+1-i).map(y=>`<option value="${y}">${y+543}</option>`).join('');
-}
-
-function setPoDateValue(isoDate) {
-  const d = isoDate ? new Date(isoDate+'T00:00:00') : new Date();
-  document.getElementById('poDateDay').value = d.getDate();
-  document.getElementById('poDateMonth').value = d.getMonth()+1;
-  document.getElementById('poDateYear').value = d.getFullYear();
-}
-
-function getPoDateValue() {
-  const day   = document.getElementById('poDateDay').value.padStart(2,'0');
-  const month = document.getElementById('poDateMonth').value.padStart(2,'0');
-  const year  = document.getElementById('poDateYear').value;
-  return `${year}-${month}-${day}`;
-}
 
 async function loadMaster() {
   const [supRes, matRes] = await Promise.all([
@@ -306,7 +276,7 @@ document.getElementById('addItemBtn').addEventListener('click', ()=>{
 document.getElementById('clearBtn').addEventListener('click', ()=>{
   poCart=[]; renderCart();
   ['poEditId','poNumber','supInput','supId','createdBy','poNote'].forEach(id=>document.getElementById(id).value='');
-  setPoDateValue(null);
+  document.getElementById('poDate').value = toDateInput();
   document.getElementById('savePOBtn').textContent='✓ สร้างใบสั่งซื้อ';
 });
 
@@ -323,7 +293,7 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
       po_number:   document.getElementById('poNumber').value.trim()||null,
       supplier_id: supId,
       created_by:  document.getElementById('createdBy').value.trim()||null,
-      po_date:     getPoDateValue(),
+      po_date:     document.getElementById('poDate').value || toDateInput(),
       note:        document.getElementById('poNote').value.trim()||null,
     };
 
@@ -446,8 +416,7 @@ document.getElementById('closePOBtn').addEventListener('click', async ()=>{
 // ===== INIT =====
 (async function init(){
   showLoading(true);
-  initPoDateDropdowns();
-  setPoDateValue(null);
+  document.getElementById('poDate').value = toDateInput();
   await loadMaster();
   await loadPOs();
   showLoading(false);
