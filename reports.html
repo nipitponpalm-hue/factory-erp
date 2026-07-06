@@ -308,10 +308,11 @@ async function loadReceive(from, to) {
 
 // ===== ISSUE =====
 async function loadPO(from, to) {
+  const toDate = to.slice(0,10);
   const { data } = await db.from('purchase_orders')
-    .select('internal_ref,po_number,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name))')
-    .gte('created_at', from).lte('created_at', to)
-    .order('created_at',{ascending:false});
+    .select('internal_ref,po_number,po_date,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name))')
+    .gte('po_date', from.slice(0,10)).lte('po_date', toDate)
+    .order('po_date',{ascending:false});
   reportData.po = data||[];
   const body=document.getElementById('poRptBody');
   const empty=document.getElementById('poRptEmpty');
@@ -326,7 +327,7 @@ async function loadPO(from, to) {
     return `<tr>
       <td><span class="lot-num">${p.po_number||'-'}</span></td>
       <td><span class="lot-num">${p.internal_ref}</span></td>
-      <td>${fmtDate(p.created_at)}</td>
+      <td>${fmtDate(p.po_date||p.created_at)}</td>
       <td>${p.suppliers?.name||'-'}</td>
       <td>${p.created_by||'-'}</td>
       <td style="text-align:center;">${p.po_items?.length||0}</td>

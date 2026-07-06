@@ -73,6 +73,10 @@
           <option value="หญิง">หญิง</option>
         </select>
       </div>
+      <div class="field">
+        <label>วันที่ PO</label>
+        <input type="date" id="poDate">
+      </div>
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="field-lg">
@@ -133,7 +137,7 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>เลขอ้างอิง</th><th>เลข PO (Express)</th><th>Supplier</th><th>ผู้สั่ง</th><th>วันที่สร้าง</th><th>รายการ</th><th>สถานะ</th><th></th></tr></thead>
+        <thead><tr><th>เลขอ้างอิง</th><th>เลข PO (Express)</th><th>Supplier</th><th>ผู้สั่ง</th><th>วันที่ PO</th><th>รายการ</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="poBody"></tbody>
       </table>
     </div>
@@ -271,6 +275,7 @@ document.getElementById('addItemBtn').addEventListener('click', ()=>{
 document.getElementById('clearBtn').addEventListener('click', ()=>{
   poCart=[]; renderCart();
   ['poEditId','poNumber','supInput','supId','createdBy','poNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('poDate').value = toDateInput();
   document.getElementById('savePOBtn').textContent='✓ สร้างใบสั่งซื้อ';
 });
 
@@ -287,6 +292,7 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
       po_number:   document.getElementById('poNumber').value.trim()||null,
       supplier_id: supId,
       created_by:  document.getElementById('createdBy').value.trim()||null,
+      po_date:     document.getElementById('poDate').value || toDateInput(),
       note:        document.getElementById('poNote').value.trim()||null,
     };
 
@@ -319,8 +325,8 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
 // ===== LOAD POs =====
 async function loadPOs() {
   const { data } = await db.from('purchase_orders')
-    .select('id,internal_ref,po_number,status,created_by,created_at,suppliers(name),po_items(id)')
-    .order('created_at',{ascending:false});
+    .select('id,internal_ref,po_number,status,created_by,po_date,created_at,suppliers(name),po_items(id)')
+    .order('po_date',{ascending:false});
   allPOs = data||[];
   renderPOs();
 }
@@ -337,7 +343,7 @@ function renderPOs() {
     <td>${p.po_number ? `<span style="font-weight:600;">${p.po_number}</span>` : '<span style="color:var(--ink-soft);font-size:12px;">ยังไม่มี</span>'}</td>
     <td>${p.suppliers?.name||'-'}</td>
     <td>${p.created_by||'-'}</td>
-    <td>${fmtDate(p.created_at)}</td>
+    <td>${fmtDate(p.po_date||p.created_at)}</td>
     <td style="text-align:center;">${p.po_items?.length||0}</td>
     <td>${statusMap[p.status]||p.status}</td>
     <td><button class="btn btn-ghost btn-sm" onclick="openDetail('${p.id}')">ดู</button></td>
@@ -366,7 +372,7 @@ window.openDetail = async function(poId) {
   const items = itemsRes.data||[];
 
   document.getElementById('poDetailTitle').textContent = `${po.internal_ref}${po.po_number?' / '+po.po_number:''}`;
-  document.getElementById('poDetailSub').textContent = `${po.suppliers?.name||'-'} | ${po.created_by||''} | ${fmtDate(po.created_at)}`;
+  document.getElementById('poDetailSub').textContent = `${po.suppliers?.name||'-'} | ${po.created_by||''} | ${fmtDate(po.po_date||po.created_at)}`;
   document.getElementById('editPoNumber').value = po.po_number||'';
 
   const closable = po.status !== 'closed';
@@ -409,6 +415,7 @@ document.getElementById('closePOBtn').addEventListener('click', async ()=>{
 // ===== INIT =====
 (async function init(){
   showLoading(true);
+  document.getElementById('poDate').value = toDateInput();
   await loadMaster();
   await loadPOs();
   showLoading(false);
