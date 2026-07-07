@@ -271,8 +271,13 @@ document.getElementById('addItemBtn').addEventListener('click', ()=>{
   if (!matSelected) { showToast('กรุณาเลือกวัตถุดิบ','error'); return; }
   const qty = parseFloat(document.getElementById('itemQty').value);
   if (!qty||qty<=0) { showToast('กรุณาระบุจำนวน','error'); return; }
-  if (poCart.find(x=>x.material_id===matSelected.id)) { showToast('วัตถุดิบนี้อยู่ในรายการแล้ว','warning'); return; }
-  poCart.push({ material_id:matSelected.id, sku:matSelected.sku, name:matSelected.name, unit:matSelected.unit, qty });
+  const existing = poCart.find(x=>x.material_id===matSelected.id);
+  if (existing) {
+    existing.qty += qty;
+    showToast(`รวมจำนวน ${matSelected.name} เป็น ${existing.qty} ${matSelected.unit}`);
+  } else {
+    poCart.push({ material_id:matSelected.id, sku:matSelected.sku, name:matSelected.name, unit:matSelected.unit, qty });
+  }
   renderCart();
   document.getElementById('matInput').value='';
   document.getElementById('matId').value='';
