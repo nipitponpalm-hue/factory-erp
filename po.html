@@ -174,6 +174,7 @@
     </div>
     <div class="save-bar" style="margin-top:16px;">
       <button class="btn btn-ghost" onclick="document.getElementById('poDetailModal').classList.remove('show')">ปิด</button>
+      <button class="btn btn-ghost btn-sm" id="editPOBtn" style="display:none;">✎ แก้ไข PO</button>
       <button class="btn btn-danger btn-sm" id="closePOBtn" style="display:none;">🔒 จบ PO</button>
     </div>
   </div>
@@ -200,6 +201,7 @@ let matSelected = null;
 let allPOs = [];
 let currentFilter = 'all';
 let detailPoId = null;
+let detailPO = null, detailItems = [];
 
 // ===== PO DATE: native date input + dd/mm/yyyy confirmation text below =====
 function syncPoDateDisplay() {
@@ -386,6 +388,7 @@ window.openDetail = async function(poId) {
   showLoading(false);
   const po = poRes.data;
   const items = itemsRes.data||[];
+  detailPO = po; detailItems = items;
 
   document.getElementById('poDetailTitle').textContent = `${po.internal_ref}${po.po_number?' / '+po.po_number:''}`;
   document.getElementById('poDetailSub').textContent = `${po.suppliers?.name||'-'} | ${po.created_by||''} | ${fmtDate(po.po_date||po.created_at)}`;
@@ -393,6 +396,7 @@ window.openDetail = async function(poId) {
 
   const closable = po.status !== 'closed';
   document.getElementById('closePOBtn').style.display = closable ? '' : 'none';
+  document.getElementById('editPOBtn').style.display = po.status === 'open' ? '' : 'none';
 
   document.getElementById('poDetailBody').innerHTML = items.map(it=>{
     const remain = it.qty_ordered - it.qty_received;
@@ -417,6 +421,33 @@ document.getElementById('savePoNumberBtn').addEventListener('click', async ()=>{
   showToast('บันทึกเลข PO สำเร็จ');
   await loadPOs();
   await openDetail(detailPoId);
+});
+
+document.getElementById('editPOBtn').addEventListener('click', () => {
+  if (!detailPO) return;
+  const po = detailPO;
+
+  document.getElementById('poEditId').value = po.id;
+  document.getElementById('poNumber').value = po.po_number||'';
+  document.getElementById('createdBy').value = po.created_by||'';
+  document.getElementById('poNote').value = po.note||'';
+  document.getElementById('poDate').value = po.po_date || toDateInput();
+  syncPoDateDisplay();
+
+  const sup = suppliers.find(s=>s.id===po.supplier_id);
+  document.getElementById('supInput').value = sup ? `${sup.code} — ${sup.name}` : '';
+  document.getElementById('supId').value = po.supplier_id||'';
+
+  poCart = detailItems.map(it => ({
+    material_id: it.material_id, sku: it.materials?.sku||'', name: it.materials?.name||'',
+    unit: it.unit, qty: it.qty_ordered,
+  }));
+  renderCart();
+
+  document.getElementById('savePOBtn').textContent = '✓ บันทึกการแก้ไข';
+  document.getElementById('poDetailModal').classList.remove('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+  showToast('กำลังแก้ไข PO — แก้รายการแล้วกด "บันทึกการแก้ไข"');
 });
 
 document.getElementById('closePOBtn').addEventListener('click', async ()=>{
