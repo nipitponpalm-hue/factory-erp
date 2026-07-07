@@ -278,6 +278,11 @@
         </table>
       </div>
       <div id="roDetailEmpty" class="empty-row" style="display:none;">ไม่มีรายการ</div>
+      <div id="roDetailEditNote" style="display:none;font-size:12px;color:var(--ink-soft);margin-top:8px;">* แก้ไขได้เฉพาะรายการที่ยังไม่ผ่าน QC เท่านั้น</div>
+      <div class="save-bar" style="margin-top:14px;">
+        <button class="btn btn-ghost" id="roDetailCloseBtn">ปิด</button>
+        <button class="btn btn-primary" id="roDetailSaveBtn" style="display:none;">✓ บันทึกการแก้ไข</button>
+      </div>
     </div>
   </div>
 </div>
@@ -793,6 +798,8 @@ async function loadRecentRO() {
 }
 
 // ===== RO DETAIL MODAL =====
+let detailRO = null, detailROItems = [];
+
 async function openRODetail(roId) {
   showLoading(true);
   const [roRes, itemsRes] = await Promise.all([
@@ -810,7 +817,17 @@ async function openRODetail(roId) {
     const { data: mats } = await db.from('materials').select('id,sku,name').in('id',matIds);
     (mats||[]).forEach(m=>{ matMap[m.id]=m; });
   }
-  items = items.map(i=>({ ...i, materials: matMap[i.material_id]||null }));
+
+  // ดึง rm_lots ที่มาจากรายการนี้ เพื่อเช็คว่าผ่าน QC ไปแล้วหรือยัง (แก้ไขได้เฉพาะ qc_pending)
+  const itemIds = items.map(i=>i.id);
+  let lotMap = {};
+  if (itemIds.length) {
+    const { data: lots } = await db.from('rm_lots').select('id,ro_item_id,status').in('ro_item_id', itemIds);
+    (lots||[]).forEach(l => { lotMap[l.ro_item_id] = l; });
+  }
+
+  items = items.map(i => ({ ...i, materials: matMap[i.material_id]||null, _lot: lotMap[i.id]||null }));
+  detailRO = ro; detailROItems = items;
 
   showLoading(false);
 
@@ -831,13 +848,30 @@ async function openRODetail(roId) {
 
   const body  = document.getElementById('roDetailBody');
   const empty = document.getElementById('roDetailEmpty');
+  const anyEditable = items.some(it => it._lot?.status === 'qc_pending');
+  document.getElementById('roDetailEditNote').style.display = anyEditable ? 'block' : 'none';
+  document.getElementById('roDetailSaveBtn').style.display  = anyEditable ? '' : 'none';
+
   if (!items.length) { body.innerHTML=''; empty.style.display='block'; }
   else {
     empty.style.display='none';
     body.innerHTML = items.map(it => {
       const noteText = it.note||'';
       const isOver = noteText.includes('น้ำหนักจริง') || noteText.includes('รับเกิน') || (it.qty_over||0) > 0;
-      return `<tr>
+      const editable = it._lot?.status === 'qc_pending';
+      if (editable) {
+        return `<tr data-item-id="${it.id}">
+          <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
+          <td>${it.materials?.name||'-'}</td>
+          <td style="text-align:right;"><input type="number" class="ro-edit-qty" step="0.01" min="0.01" value="${it.qty}" style="width:80px;text-align:right;"></td>
+          <td>${it.unit}</td>
+          <td><input type="text" class="ro-edit-lot" value="${it.supplier_lot||''}" style="width:90px;"></td>
+          <td><input type="date" class="ro-edit-mfg" value="${it.mfg_date||''}" style="width:130px;"></td>
+          <td><input type="date" class="ro-edit-exp" value="${it.exp_date||''}" style="width:130px;"></td>
+          <td style="color:${isOver?'var(--amber)':'var(--ink-soft)'};font-size:12px;">${noteText||'-'}</td>
+        </tr>`;
+      }
+      return `<tr data-item-id="${it.id}">
         <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
         <td>${it.materials?.name||'-'}</td>
         <td style="text-align:right;font-weight:600;">${fmtQty(it.qty)}</td>
@@ -853,7 +887,54 @@ async function openRODetail(roId) {
   document.getElementById('roDetailOverlay').style.display='flex';
 }
 
+document.getElementById('roDetailSaveBtn').addEventListener('click', async () => {
+  if (!detailRO) return;
+  showLoading(true);
+  try {
+    for (const tr of document.querySelectorAll('#roDetailBody tr[data-item-id]')) {
+      const itemId = tr.dataset.itemId;
+      const item = detailROItems.find(i => i.id === itemId);
+      if (!item || item._lot?.status !== 'qc_pending') continue;
+
+      const qtyInput = tr.querySelector('.ro-edit-qty');
+      if (!qtyInput) continue;
+      const newQty  = parseFloat(qtyInput.value);
+      const newLot  = tr.querySelector('.ro-edit-lot').value.trim()||null;
+      const newMfg  = tr.querySelector('.ro-edit-mfg').value||null;
+      const newExp  = tr.querySelector('.ro-edit-exp').value||null;
+      if (!newQty || newQty <= 0) continue;
+
+      // ปรับ qty_received ของ PO (ถอนของเก่า ใส่ของใหม่ ไม่เกิน qty_ordered)
+      if (detailRO.po_id) {
+        const { data: poItem } = await db.from('po_items').select('id,qty_ordered,qty_received').eq('po_id', detailRO.po_id).eq('material_id', item.material_id).single();
+        if (poItem) {
+          const oldApplied = Math.min(item.qty, poItem.qty_ordered); // ประมาณจากยอดเดิม
+          const newReceived = Math.min(Math.max(0, poItem.qty_received - oldApplied) + newQty, poItem.qty_ordered);
+          await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
+        }
+      }
+
+      await db.from('receive_items').update({ qty: newQty, supplier_lot: newLot, mfg_date: newMfg, exp_date: newExp }).eq('id', itemId);
+      if (item._lot) {
+        await db.from('rm_lots').update({ initial_qty: newQty, supplier_lot: newLot, exp_date: newExp }).eq('id', item._lot.id);
+      }
+    }
+    showToast('บันทึกการแก้ไขใบรับสำเร็จ');
+    document.getElementById('roDetailOverlay').style.display='none';
+    await loadMaster();
+    await loadRecentRO();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
+
 document.getElementById('roDetailClose').addEventListener('click', () => {
+  document.getElementById('roDetailOverlay').style.display='none';
+});
+document.getElementById('roDetailCloseBtn').addEventListener('click', () => {
   document.getElementById('roDetailOverlay').style.display='none';
 });
 document.getElementById('roDetailOverlay').addEventListener('click', function(e) {
