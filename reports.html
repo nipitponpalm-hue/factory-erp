@@ -76,6 +76,7 @@
     <button class="tab-btn" onclick="showTab('stock')">📦 สต็อกปัจจุบัน</button>
     <button class="tab-btn" onclick="showTab('expiry')">⚠️ ใกล้หมดอายุ</button>
     <button class="tab-btn" onclick="showTab('yield')">📊 Yield การแปรรูป</button>
+    <button class="tab-btn" onclick="showTab('ledger')">📒 ทะเบียนคุมวัตถุดิบ</button>
   </div>
 
   <!-- TAB: RECEIVE -->
@@ -219,6 +220,23 @@
       <div id="expiryEmpty" class="empty-row" style="display:none;">ไม่มีรายการใกล้หมดอายุ</div>
     </div>
   </div>
+
+  <!-- TAB: LEDGER (ทะเบียนคุมวัตถุดิบ รับเข้า-จ่ายออก) -->
+  <div id="tab-ledger" class="tab-content" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        ทะเบียนควบคุมวัตถุดิบ (รับเข้า-จ่ายออก) — สำหรับตรวจ GHP
+        <button class="btn btn-ghost btn-sm" onclick="exportTab('ledger')">📥 Export Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>วันที่</th><th>ประเภท</th><th style="text-align:right;">รับเข้า</th><th style="text-align:right;">จ่ายออก</th><th style="text-align:right;">คงเหลือสะสม</th><th>หน่วย</th><th>ผู้ดำเนินการ</th><th>อ้างอิง/หมายเหตุ</th></tr></thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+      <div id="ledgerEmpty" class="empty-row" style="display:none;">ไม่มีข้อมูลในช่วงนี้</div>
+    </div>
+  </div>
 </main>
 
 <div class="toast" id="toast"></div>
@@ -228,6 +246,8 @@
 .tab-btn { border:1.5px solid var(--line);background:transparent;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
 .tab-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
 .tab-content { }
+.ledger-group-header td { background:var(--green-deep);color:#fff;font-weight:700;padding:8px 10px;font-size:13px; }
+.ledger-opening-row td { background:var(--surface);font-style:italic; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -278,6 +298,7 @@ async function loadAll() {
       loadStock(),
       loadExpiry(),
       loadYield(from, toEnd),
+      loadLedger(from, toEnd),
     ]);
   } finally { showLoading(false); }
 }
@@ -662,6 +683,92 @@ async function loadExpiry() {
   }).join('');
 }
 
+// ===== LEDGER (ทะเบียนควบคุมวัตถุดิบ รับเข้า-จ่ายออก) =====
+const LEDGER_TYPE_LABEL = {
+  receive:   'รับเข้า (QC ผ่าน)',
+  repack_in: 'รับเข้า (ผลคัด/รีแพ็ค)',
+  return:    'รับเข้า (คืน)',
+  dispatch:  'จ่ายออก (จำหน่าย)',
+  production:'จ่ายออก (ใช้ผลิต)',
+  repack:    'จ่ายออก (ใช้คัด/รีแพ็ค)',
+  adjust:    'จ่ายออก (ตัดสต็อก)',
+  issue:     'จ่ายออก (เบิกใช้งาน)',
+  waste:     'จ่ายออก (ของเสีย)',
+};
+
+async function loadLedger(from, to) {
+  // ดึงทุก transaction จนถึงวันสิ้นสุด เพื่อคำนวณยอดยกมา (opening balance) ก่อนวันเริ่มต้น
+  const { data: txns } = await db.from('rm_transactions')
+    .select('id,lot_id,txn_type,qty,operator,note,created_at')
+    .lte('created_at', to)
+    .order('created_at', { ascending: true });
+
+  const lotIds = [...new Set((txns||[]).map(t=>t.lot_id).filter(Boolean))];
+  let lots = [];
+  if (lotIds.length) {
+    const { data } = await db.from('rm_lots').select('id,lot_number,material_id,unit').in('id', lotIds);
+    lots = data || [];
+  }
+  const lotMap = Object.fromEntries(lots.map(l=>[l.id,l]));
+
+  const matIds = [...new Set(lots.map(l=>l.material_id).filter(Boolean))];
+  let materials = [];
+  if (matIds.length) {
+    const { data } = await db.from('materials').select('id,sku,name').in('id', matIds);
+    materials = data || [];
+  }
+  const matMap = Object.fromEntries(materials.map(m=>[m.id,m]));
+
+  // จัดกลุ่มตาม material_id
+  const byMat = {};
+  (txns||[]).forEach(t => {
+    const lot = lotMap[t.lot_id];
+    if (!lot?.material_id) return;
+    if (!byMat[lot.material_id]) byMat[lot.material_id] = [];
+    byMat[lot.material_id].push({ ...t, lot_number: lot.lot_number, unit: lot.unit });
+  });
+
+  const groups = Object.keys(byMat).map(matId => {
+    const mat = matMap[matId] || { sku:'-', name:'-' };
+    let running = 0, opening = 0;
+    const rows = [];
+    byMat[matId].forEach(t => {
+      running += t.qty;
+      if (t.created_at < from) { opening = running; return; }
+      rows.push({
+        date: t.created_at, type: LEDGER_TYPE_LABEL[t.txn_type] || t.txn_type,
+        qty_in: t.qty > 0 ? t.qty : null, qty_out: t.qty < 0 ? -t.qty : null,
+        balance: running, unit: t.unit, operator: t.operator||'-', note: t.note||'-',
+        lot_number: t.lot_number,
+      });
+    });
+    return { sku: mat.sku, name: mat.name, opening, rows };
+  }).filter(g => g.rows.length).sort((a,b) => (a.sku||'').localeCompare(b.sku||''));
+
+  reportData.ledger = groups;
+
+  const body  = document.getElementById('ledgerBody');
+  const empty = document.getElementById('ledgerEmpty');
+  if (!groups.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  body.innerHTML = groups.map(g => {
+    const header = `<tr class="ledger-group-header"><td colspan="8">SKU: ${g.sku} — ${g.name}</td></tr>`;
+    const openingRow = `<tr class="ledger-opening-row"><td colspan="4" style="color:var(--ink-soft);">ยอดยกมา</td><td style="text-align:right;font-weight:700;">${fmtQty(g.opening)}</td><td colspan="3"></td></tr>`;
+    const dataRows = g.rows.map(r => `<tr>
+      <td style="white-space:nowrap;font-size:12.5px;">${fmtDT(r.date)}</td>
+      <td>${r.type}</td>
+      <td style="text-align:right;color:var(--green-deep);font-weight:600;">${r.qty_in!=null?fmtQty(r.qty_in):''}</td>
+      <td style="text-align:right;color:var(--red);font-weight:600;">${r.qty_out!=null?fmtQty(r.qty_out):''}</td>
+      <td style="text-align:right;font-weight:700;">${fmtQty(r.balance)}</td>
+      <td>${r.unit||'-'}</td>
+      <td>${r.operator}</td>
+      <td style="font-size:12px;color:var(--ink-soft);">${r.note} <span class="lot-num" style="font-size:10.5px;">${r.lot_number}</span></td>
+    </tr>`).join('');
+    return header + openingRow + dataRows;
+  }).join('');
+}
+
 // ===== EXPORT =====
 window.exportTab = function(tab) {
   let rows=[], filename='', headers=[];
@@ -717,6 +824,15 @@ window.exportTab = function(tab) {
       headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','RM ที่ใส่','FG ที่ได้','หน่วย','Yield %'];
       rows=(reportData.yieldRows||[]).map(r=>[r.po_number,fmtDT(r.completed_at),r.operator,r.lot_number,r.product,r.sku,r.rm_qty,r.fg_qty,r.unit,r.yield_pct]);
       filename='รายงาน Yield'; break;
+    case 'ledger':
+      headers=['วันที่','ประเภท','Lot','รับเข้า','จ่ายออก','คงเหลือสะสม','หน่วย','ผู้ดำเนินการ','อ้างอิง/หมายเหตุ'];
+      (reportData.ledger||[]).forEach(g => {
+        rows.push([`SKU: ${g.sku} — ${g.name}`,'','','','','','','','']);
+        rows.push(['ยอดยกมา','','','','',g.opening,'','','']);
+        g.rows.forEach(r => rows.push([fmtDT(r.date), r.type, r.lot_number, r.qty_in||'', r.qty_out||'', r.balance, r.unit||'-', r.operator, r.note]));
+        rows.push(['','','','','','','','','']);
+      });
+      filename='ทะเบียนคุมวัตถุดิบ'; break;
   }
   if (!rows.length){ showToast('ไม่มีข้อมูลสำหรับ Export','error'); return; }
   const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
