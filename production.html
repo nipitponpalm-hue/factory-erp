@@ -330,6 +330,7 @@ let rmInputs = [];     // { lot_id, lot_number, material_name, material_sku, uni
 let prodSelected = null;
 let matSelected = null;
 let allAvailableLots = [];  // rm_lots available
+let materialsWithStock = new Set();  // material_id ที่มีสต็อกเหลือ > 0
 
 // ===== LOAD MASTER =====
 async function loadMaster() {
@@ -346,6 +347,7 @@ async function loadMaster() {
   materials = matRes.data||[];
   products  = prodRes.data||[];
   allAvailableLots = (lotRes.data||[]).filter(l => l.rm_stock?.qty_on_hand > 0 || l.status === 'available');
+  materialsWithStock = new Set(allAvailableLots.filter(l => l.rm_stock?.qty_on_hand > 0).map(l => l.material_id));
 }
 
 // ===== COMBOS =====
@@ -362,7 +364,8 @@ setupCombo({
   listEl:  document.getElementById('matList'),
   getItems(q){
     q=(q||'').toLowerCase();
-    const list = q ? materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : materials;
+    const inStock = materials.filter(m=>materialsWithStock.has(m.id));
+    const list = q ? inStock.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : inStock;
     return list.slice(0,40);
   },
   renderItem: (m,i)=>`<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
@@ -717,7 +720,8 @@ window.switchTab = function(tab) {
     listEl:  document.getElementById('rpMatList'),
     getItems(q){
       q=(q||'').toLowerCase();
-      const list = q ? materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : materials;
+      const inStock = materials.filter(m=>materialsWithStock.has(m.id));
+      const list = q ? inStock.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)) : inStock;
       return list.slice(0,40);
     },
     renderItem: (m,i)=>`<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
