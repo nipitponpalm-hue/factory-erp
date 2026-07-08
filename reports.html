@@ -87,7 +87,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>เลขที่ใบรับ</th><th>วันรับ</th><th>Supplier</th><th>ผู้รับ</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
+          <thead><tr><th>เลขที่ใบรับ</th><th>วันรับ</th><th>Supplier</th><th>ผู้รับ</th><th>SKU</th><th>วัตถุดิบ</th><th>RM Lot</th><th style="text-align:right;">จำนวนรับ</th><th>หน่วย</th><th>Supplier Lot</th><th>EXP</th></tr></thead>
           <tbody id="receiveBody"></tbody>
         </table>
       </div>
@@ -284,25 +284,50 @@ async function loadAll() {
 
 document.getElementById('loadBtn').addEventListener('click', loadAll);
 
-// ===== RECEIVE =====
+// ===== RECEIVE (ระดับรายการ/Lot สำหรับ export ที่ใช้งานจริง) =====
 async function loadReceive(from, to) {
   const toDate = to.slice(0,10);
-  const { data } = await db.from('receive_orders')
-    .select('ro_number,receive_date,operator,status,suppliers(name),receive_items(id)')
+  const { data: ros } = await db.from('receive_orders')
+    .select('id,ro_number,receive_date,operator,suppliers(name),receive_items(id,material_id,qty,unit,supplier_lot,exp_date,materials(sku,name))')
     .gte('receive_date',from).lte('receive_date',toDate)
     .order('receive_date',{ascending:false});
-  reportData.receive = data||[];
+
+  // ดึง rm_lots ต่อ receive_item เพื่อโชว์เลข RM Lot ที่แท้จริง
+  const itemIds = (ros||[]).flatMap(r => (r.receive_items||[]).map(i=>i.id));
+  let lotMap = {};
+  if (itemIds.length) {
+    const { data: lots } = await db.from('rm_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds);
+    (lots||[]).forEach(l => { lotMap[l.ro_item_id] = l.lot_number; });
+  }
+
+  const rows = [];
+  (ros||[]).forEach(r => {
+    (r.receive_items||[]).forEach(it => {
+      rows.push({
+        ro_number: r.ro_number, receive_date: r.receive_date, supplier: r.suppliers?.name||'-', operator: r.operator,
+        sku: it.materials?.sku||'-', material_name: it.materials?.name||'-', lot_number: lotMap[it.id]||'-',
+        qty: it.qty, unit: it.unit, supplier_lot: it.supplier_lot||'-', exp_date: it.exp_date,
+      });
+    });
+  });
+
+  reportData.receive = rows;
   const body=document.getElementById('receiveBody');
   const empty=document.getElementById('receiveEmpty');
-  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  if (!rows.length){ body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-  body.innerHTML=data.map(r=>`<tr>
+  body.innerHTML=rows.map(r=>`<tr>
     <td><span class="lot-num">${r.ro_number}</span></td>
     <td>${fmtDate(r.receive_date)}</td>
-    <td>${r.suppliers?.name||'-'}</td>
+    <td>${r.supplier}</td>
     <td>${r.operator}</td>
-    <td style="text-align:center;">${r.receive_items?.length||0}</td>
-    <td><span class="status-badge s-confirmed">รับแล้ว</span></td>
+    <td><span class="lot-num">${r.sku}</span></td>
+    <td>${r.material_name}</td>
+    <td><span class="lot-num">${r.lot_number}</span></td>
+    <td style="text-align:right;font-weight:600;">${fmtQty(r.qty)}</td>
+    <td>${r.unit}</td>
+    <td>${r.supplier_lot}</td>
+    <td>${r.exp_date?fmtDate(r.exp_date):'-'}</td>
   </tr>`).join('');
 }
 
@@ -642,8 +667,8 @@ window.exportTab = function(tab) {
   let rows=[], filename='', headers=[];
   switch(tab) {
     case 'receive':
-      headers=['เลขที่ใบรับ','วันรับ','Supplier','ผู้รับ','จำนวนรายการ'];
-      rows=(reportData.receive||[]).map(r=>[r.ro_number,fmtDate(r.receive_date),r.suppliers?.name,r.operator,r.receive_items?.length||0]);
+      headers=['เลขที่ใบรับ','วันรับ','Supplier','ผู้รับ','SKU','วัตถุดิบ','RM Lot','จำนวนรับ','หน่วย','Supplier Lot','EXP'];
+      rows=(reportData.receive||[]).map(r=>[r.ro_number,fmtDate(r.receive_date),r.supplier,r.operator,r.sku,r.material_name,r.lot_number,r.qty,r.unit,r.supplier_lot,r.exp_date?fmtDate(r.exp_date):'-']);
       filename='รายงานรับสินค้า'; break;
     case 'po':
       headers=['เลขที่ PO','อ้างอิง (Internal)','วันที่สร้าง','Supplier','ผู้สร้าง','จำนวนรายการ','สั่งรวม','รับแล้ว','สถานะ'];
