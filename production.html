@@ -526,7 +526,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
   document.getElementById('confirmBtn').disabled=true;
   showLoading(true);
   try {
-    const poNumber = await generateLotNumber('PO');
+    const poNumber = await generateLotNumber('PD');
     const prodAt   = prodDateV ? new Date(prodDateV).toISOString() : new Date().toISOString();
 
     // 1. สร้าง production_order
