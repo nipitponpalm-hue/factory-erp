@@ -726,12 +726,22 @@ async function loadReceiveQC(from, to) {
   const itemIds = itemRows.map(r=>r.item.id);
   let lotMap = {}, qcMap = {};
   if (itemIds.length) {
-    const [{ data: lots }, { data: qcs }] = await Promise.all([
-      db.from('rm_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds),
-      db.from('qc_records').select('ro_item_id,result,temp_actual,appearance,note,operator,inspect_date').in('ro_item_id', itemIds).order('inspect_date',{ascending:true}),
-    ]);
+    const { data: lots } = await db.from('rm_lots').select('id,ro_item_id,lot_number').in('ro_item_id', itemIds);
     (lots||[]).forEach(l => { lotMap[l.ro_item_id] = l.lot_number; });
-    (qcs||[]).forEach(q => { qcMap[q.ro_item_id] = q; }); // เก็บล่าสุด (เรียง asc แล้ว overwrite)
+
+    // qc_records เชื่อมผ่าน rm_lot_id เป็นหลัก (ro_item_id อาจไม่ถูกบันทึกในบางรายการเก่า)
+    const lotIds = (lots||[]).map(l=>l.id);
+    const lotIdToItemId = Object.fromEntries((lots||[]).map(l=>[l.id, l.ro_item_id]));
+    if (lotIds.length) {
+      const { data: qcs } = await db.from('qc_records')
+        .select('rm_lot_id,result,temp_actual,appearance,note,operator,inspect_date')
+        .in('rm_lot_id', lotIds)
+        .order('inspect_date',{ascending:true});
+      (qcs||[]).forEach(q => {
+        const itemId = lotIdToItemId[q.rm_lot_id];
+        if (itemId) qcMap[itemId] = q; // เก็บล่าสุด (เรียง asc แล้ว overwrite)
+      });
+    }
   }
 
   const cards = itemRows.map(r => ({

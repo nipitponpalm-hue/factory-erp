@@ -135,7 +135,7 @@ let pendingLots = [], operators = [];
 async function loadData() {
   const [lotsRes, oprRes] = await Promise.all([
     db.from('rm_lots')
-      .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, materials(sku,name), suppliers(name)')
+      .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, ro_item_id, materials(sku,name), suppliers(name)')
       .eq('status','qc_pending')
       .order('created_at'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
