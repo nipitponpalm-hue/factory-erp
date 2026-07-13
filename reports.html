@@ -734,7 +734,7 @@ async function loadReceiveQC(from, to) {
     const lotIdToItemId = Object.fromEntries((lots||[]).map(l=>[l.id, l.ro_item_id]));
     if (lotIds.length) {
       const { data: qcs } = await db.from('qc_records')
-        .select('rm_lot_id,result,temp_actual,appearance,note,operator,inspect_date')
+        .select('rm_lot_id,result,temp_actual,appearance,note,operator,inspect_date,chemical_status')
         .in('rm_lot_id', lotIds)
         .order('inspect_date',{ascending:true});
       (qcs||[]).forEach(q => {
@@ -784,6 +784,7 @@ async function loadReceiveQC(from, to) {
       <div class="rqc-row"><span class="k">ผู้ตรวจ</span><span class="v">${qc.operator||'-'}</span></div>
       <div class="rqc-row"><span class="k">วันที่ตรวจ</span><span class="v">${fmtDT(qc.inspect_date)}</span></div>
       <div class="rqc-row"><span class="k">หมายเหตุ</span><span class="v" style="font-weight:400;color:var(--ink-soft);">${qc.note||'-'}</span></div>
+      <div class="rqc-row"><span class="k">สารเคมีตกค้าง</span><span class="v">${({pending:'⏳ รอผล',passed:'✅ ผ่าน',failed:'❌ ไม่ผ่าน'})[qc.chemical_status||'pending']}</span></div>
       ` : `<div style="font-size:12.5px;color:var(--ink-soft);padding:4px 0;">ยังไม่ได้ตรวจ QC</div>`}
     </div>`;
   }).join('');

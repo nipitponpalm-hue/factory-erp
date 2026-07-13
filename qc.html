@@ -12,6 +12,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Factory ERP">
 <link rel="apple-touch-icon" href="/icons/icon-192.png"><link rel="stylesheet" href="css/main.css">
+<style>
+.qc-checklist-group { background:var(--surface);border-radius:8px;padding:10px 14px;margin-bottom:10px; }
+.qc-group-title { font-size:12.5px;font-weight:700;color:var(--green-deep);margin-bottom:6px; }
+.qc-check-item { display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;cursor:pointer; }
+.qc-check-item input { width:16px;height:16px;accent-color:var(--green-deep);cursor:pointer; }
+.qc-issue-chip { font-size:11px;background:#FEE2E2;color:#991B1B;border-radius:4px;padding:1px 6px;margin:1px 2px 1px 0;display:inline-block; }
+</style>
 </head>
 <body>
 
@@ -64,7 +71,7 @@
     <div class="card-title">ประวัติการตรวจสอบ (30 รายการล่าสุด)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>วันที่ตรวจ</th><th>RM Lot</th><th>วัตถุดิบ</th><th>ผล</th><th>อุณหภูมิ</th><th>สภาพ</th><th>ผู้ตรวจ</th><th>หมายเหตุ</th></tr></thead>
+        <thead><tr><th>วันที่ตรวจ</th><th>RM Lot</th><th>วัตถุดิบ</th><th>ผล</th><th>อุณหภูมิ</th><th>ปัญหาที่พบ</th><th>สารเคมี</th><th>ผู้ตรวจ</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="historyBody"></tbody>
       </table>
     </div>
@@ -99,13 +106,48 @@
       </div>
     </div>
 
-    <div style="margin-bottom:12px;">
-      <label>สภาพสินค้า</label>
-      <input type="text" id="qcAppearance" placeholder="เช่น สด สะอาด ไม่มีกลิ่น">
+    <div class="qc-checklist-group">
+      <div class="qc-group-title">1. สภาพทั่วไปของการขนส่ง</div>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="vehicle_ok" checked> สภาพรถขนส่งเหมาะสม</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="container_ok" checked> สภาพภาชนะบรรจุเหมาะสม</label>
     </div>
 
-    <div style="margin-bottom:16px;">
-      <label>หมายเหตุ</label>
+    <div class="qc-checklist-group">
+      <div class="qc-group-title">2. ลักษณะทางกายภาพทั่วไป</div>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="size_shape_ok" checked> ขนาด/รูปร่างปกติ</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="ripeness_ok" checked> ความสุก/ดิบเหมาะสม</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="color_smell_ok" checked> สี/กลิ่นปกติ</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="spoilage_ok" checked> ไม่มีการเน่าเสีย</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="bruising_ok" checked> ไม่มีรอยช้ำ</label>
+    </div>
+
+    <div class="qc-checklist-group">
+      <div class="qc-group-title">3. ลักษณะทางชีวภาพ</div>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="mold_ok" checked> ไม่พบเชื้อรา</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="insects_ok" checked> ไม่พบแมลง/หนอน/ไข่แมลง</label>
+      <label class="qc-check-item"><input type="checkbox" class="qc-check" data-key="plant_disease_ok" checked> ไม่พบโรคพืช</label>
+    </div>
+
+    <div class="qc-checklist-group" style="background:#F9F8F2;">
+      <div class="qc-group-title">4. ลักษณะทางเคมี <span style="font-weight:400;color:var(--ink-soft);">(ไม่ block การรับ/ผลิต — ตามผลทีหลังได้)</span></div>
+      <div class="row" style="margin:0;">
+        <div class="field">
+          <label>สารเคมีฆ่าแมลงตกค้าง</label>
+          <select id="qcChemStatus">
+            <option value="pending" selected>⏳ รอผลตรวจ</option>
+            <option value="passed">✅ ผ่าน</option>
+            <option value="failed">❌ ไม่ผ่าน</option>
+          </select>
+        </div>
+        <div class="field-lg">
+          <label>หมายเหตุ (เช่น วิธีตรวจ/นัดส่งแล็บ)</label>
+          <input type="text" id="qcChemNote" placeholder="">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;margin-top:12px;">
+      <label>หมายเหตุทั่วไป</label>
       <input type="text" id="qcNote" placeholder="">
     </div>
 
@@ -120,6 +162,33 @@
   </div>
 </div>
 
+<!-- CHEMICAL RESULT UPDATE MODAL -->
+<div class="modal-overlay" id="chemModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">อัปเดตผลสารเคมีตกค้าง</div>
+      <button class="modal-close" id="chemClose">✕</button>
+    </div>
+    <input type="hidden" id="chemRecordId">
+    <div class="field" style="margin-bottom:12px;">
+      <label>ผลตรวจ</label>
+      <select id="chemStatusEdit">
+        <option value="pending">⏳ รอผลตรวจ</option>
+        <option value="passed">✅ ผ่าน</option>
+        <option value="failed">❌ ไม่ผ่าน</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>หมายเหตุ</label>
+      <input type="text" id="chemNoteEdit" placeholder="">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="chemCancelBtn">ยกเลิก</button>
+      <button class="btn btn-primary" id="chemSaveBtn">✓ บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -130,6 +199,14 @@
 (function(){
 
 let pendingLots = [], operators = [];
+
+const QC_ISSUE_LABEL = {
+  vehicle_ok: 'สภาพรถ', container_ok: 'ภาชนะ',
+  size_shape_ok: 'ขนาด/รูปร่าง', ripeness_ok: 'สุก/ดิบ', color_smell_ok: 'สี/กลิ่น', spoilage_ok: 'เน่าเสีย', bruising_ok: 'รอยช้ำ',
+  mold_ok: 'เชื้อรา', insects_ok: 'แมลง/หนอน/ไข่แมลง', plant_disease_ok: 'โรคพืช',
+};
+const CHEM_LABEL = { pending:'⏳ รอผล', passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน' };
+const CHEM_CLASS = { pending:'s-pending', passed:'s-available', failed:'s-on_hold' };
 
 // ===== LOAD =====
 async function loadData() {
@@ -164,31 +241,40 @@ function renderPending() {
   </tr>`).join('');
 }
 
+let historyRecords = [];
+
 async function loadHistory() {
   const { data } = await db
     .from('qc_records')
-    .select('id, inspect_date, result, temp_actual, appearance, operator, note, rm_lots(lot_number, materials(name))')
+    .select('id, inspect_date, result, temp_actual, appearance, operator, note, checklist, chemical_status, chemical_note, rm_lots(lot_number, materials(name))')
     .order('created_at', { ascending: false })
     .limit(30);
 
+  historyRecords = data || [];
   const body  = document.getElementById('historyBody');
   const empty = document.getElementById('historyEmpty');
-  if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  if (!historyRecords.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
 
   const resultLabel = { passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน', on_hold:'⏸ พักไว้' };
   const resultClass = { passed:'s-available', failed:'s-on_hold', on_hold:'s-pending' };
 
-  body.innerHTML = data.map(r => `<tr>
+  body.innerHTML = historyRecords.map(r => {
+    const issues = Object.entries(r.checklist||{}).filter(([k,v])=>v===false).map(([k])=>QC_ISSUE_LABEL[k]||k);
+    const chem = r.chemical_status || 'pending';
+    return `<tr>
     <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.inspect_date)}</td>
     <td><span class="lot-num">${r.rm_lots?.lot_number||'-'}</span></td>
     <td>${r.rm_lots?.materials?.name||'-'}</td>
     <td><span class="status-badge ${resultClass[r.result]||''}">${resultLabel[r.result]||r.result}</span></td>
     <td>${r.temp_actual!=null ? r.temp_actual+'°C' : '-'}</td>
-    <td>${r.appearance||'-'}</td>
+    <td>${issues.length ? issues.map(i=>`<span class="qc-issue-chip">${i}</span>`).join('') : '<span style="color:var(--ink-soft);font-size:12px;">-</span>'}</td>
+    <td><span class="status-badge ${CHEM_CLASS[chem]}">${CHEM_LABEL[chem]}</span></td>
     <td>${r.operator}</td>
     <td style="font-size:12.5px;color:var(--ink-soft);">${r.note||'-'}</td>
-  </tr>`).join('');
+    <td><button class="btn btn-ghost btn-sm" onclick="openChemEdit('${r.id}')">แก้ผลเคมี</button></td>
+  </tr>`;
+  }).join('');
 }
 
 // ===== QC MODAL =====
@@ -209,8 +295,10 @@ function openQC(lotId) {
   document.getElementById('qcLotTitle').textContent = `${lot.lot_number} — ${lot.materials?.name} ${fmtQty(lot.initial_qty)} ${lot.unit}`;
   document.getElementById('qcOprInput').value = '';
   document.getElementById('qcTemp').value     = '';
-  document.getElementById('qcAppearance').value = '';
   document.getElementById('qcNote').value     = '';
+  document.querySelectorAll('.qc-check').forEach(cb => cb.checked = true);
+  document.getElementById('qcChemStatus').value = 'pending';
+  document.getElementById('qcChemNote').value   = '';
   document.getElementById('qcModal').classList.add('show');
 }
 
@@ -227,6 +315,15 @@ async function submitQC(result) {
   try {
     const lot = pendingLots.find(l => l.id === lotId);
 
+    // รวบรวม checklist จาก checkbox
+    const checklist = {};
+    document.querySelectorAll('.qc-check').forEach(cb => { checklist[cb.dataset.key] = cb.checked; });
+    const issues = Object.entries(checklist).filter(([k,v])=>v===false).map(([k])=>QC_ISSUE_LABEL[k]||k);
+    const appearanceSummary = issues.length ? `พบปัญหา: ${issues.join(', ')}` : 'ปกติทุกรายการ';
+
+    const chemStatus = document.getElementById('qcChemStatus').value;
+    const chemNote    = document.getElementById('qcChemNote').value.trim()||null;
+
     // 1. บันทึก qc_record
     const { error: qcErr } = await db.from('qc_records').insert({
       rm_lot_id:   lotId,
@@ -234,8 +331,13 @@ async function submitQC(result) {
       operator,
       result,
       temp_actual: parseFloat(document.getElementById('qcTemp').value)||null,
-      appearance:  document.getElementById('qcAppearance').value.trim()||null,
+      appearance:  appearanceSummary,
       note:        document.getElementById('qcNote').value.trim()||null,
+      checklist,
+      chemical_status: chemStatus,
+      chemical_note: chemNote,
+      chemical_checked_at: chemStatus !== 'pending' ? new Date().toISOString() : null,
+      chemical_checked_by: chemStatus !== 'pending' ? operator : null,
     });
     if (qcErr) throw qcErr;
 
@@ -275,8 +377,47 @@ async function submitQC(result) {
   }
 }
 
-window.openQC    = openQC;
-window.submitQC  = submitQC;
+// ===== CHEMICAL RESULT UPDATE (มาทีหลังได้) =====
+function openChemEdit(recordId) {
+  const rec = historyRecords.find(r => r.id === recordId);
+  if (!rec) return;
+  document.getElementById('chemRecordId').value = recordId;
+  document.getElementById('chemStatusEdit').value = rec.chemical_status || 'pending';
+  document.getElementById('chemNoteEdit').value   = rec.chemical_note || '';
+  document.getElementById('chemModal').classList.add('show');
+}
+
+document.getElementById('chemClose').addEventListener('click', () => {
+  document.getElementById('chemModal').classList.remove('show');
+});
+document.getElementById('chemCancelBtn').addEventListener('click', () => {
+  document.getElementById('chemModal').classList.remove('show');
+});
+
+document.getElementById('chemSaveBtn').addEventListener('click', async () => {
+  const recordId = document.getElementById('chemRecordId').value;
+  const status    = document.getElementById('chemStatusEdit').value;
+  const note      = document.getElementById('chemNoteEdit').value.trim()||null;
+  showLoading(true);
+  try {
+    const { error } = await db.from('qc_records').update({
+      chemical_status: status, chemical_note: note,
+      chemical_checked_at: status !== 'pending' ? new Date().toISOString() : null,
+    }).eq('id', recordId);
+    if (error) throw error;
+    showToast('บันทึกผลสารเคมีสำเร็จ');
+    document.getElementById('chemModal').classList.remove('show');
+    await loadHistory();
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
+
+window.openQC       = openQC;
+window.submitQC     = submitQC;
+window.openChemEdit = openChemEdit;
 
 // ===== INIT =====
 (async function init() {
