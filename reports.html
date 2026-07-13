@@ -734,7 +734,7 @@ async function loadReceiveQC(from, to) {
     const lotIdToItemId = Object.fromEntries((lots||[]).map(l=>[l.id, l.ro_item_id]));
     if (lotIds.length) {
       const { data: qcs } = await db.from('qc_records')
-        .select('rm_lot_id,result,temp_actual,appearance,note,operator,inspect_date,chemical_status')
+        .select('rm_lot_id,result,temp_actual,appearance,note,operator,inspect_date,chemical_status,chemical_note,checklist')
         .in('rm_lot_id', lotIds)
         .order('inspect_date',{ascending:true});
       (qcs||[]).forEach(q => {
@@ -761,6 +761,23 @@ async function loadReceiveQC(from, to) {
 
   const QC_LABEL = { passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน', on_hold:'⚠️ พักไว้' };
   const QC_CLASS = { passed:'rqc-qc-pass', failed:'rqc-qc-fail', on_hold:'rqc-qc-hold' };
+  const CHEM_LABEL = { pending:'⏳ รอผล', passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน' };
+  const CHECKLIST_GROUPS = [
+    { label:'สภาพการขนส่ง', keys:{ vehicle_ok:'สภาพรถขนส่ง', container_ok:'สภาพภาชนะ' } },
+    { label:'ลักษณะทางกายภาพ', keys:{ size_shape_ok:'ขนาด/รูปร่าง', ripeness_ok:'สุก/ดิบ', color_smell_ok:'สี/กลิ่น', spoilage_ok:'เน่าเสีย', bruising_ok:'รอยช้ำ' } },
+    { label:'ลักษณะทางชีวภาพ', keys:{ mold_ok:'เชื้อรา', insects_ok:'แมลง/หนอน/ไข่แมลง', plant_disease_ok:'โรคพืช' } },
+  ];
+
+  function renderChecklistDetail(checklist) {
+    if (!checklist) return '<div style="font-size:12px;color:var(--ink-soft);">ไม่มีข้อมูล checklist</div>';
+    return CHECKLIST_GROUPS.map(g => `
+      <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin:6px 0 2px;">${g.label}</div>
+      ${Object.entries(g.keys).map(([key,label]) => {
+        const ok = checklist[key];
+        return `<div class="rqc-row"><span class="k">${label}</span><span class="v" style="color:${ok===false?'var(--red)':'var(--green-deep)'};">${ok===false?'✗ พบปัญหา':'✓ ปกติ'}</span></div>`;
+      }).join('')}
+    `).join('');
+  }
 
   grid.innerHTML = cards.map(c => {
     const qc = c.qc;
@@ -777,14 +794,17 @@ async function loadReceiveQC(from, to) {
       <div class="rqc-row"><span class="k">Supplier Lot</span><span class="v">${c.supplier_lot}</span></div>
       <div class="rqc-row"><span class="k">EXP</span><span class="v">${c.exp_date?fmtDate(c.exp_date):'-'}</span></div>
       <div class="rqc-row"><span class="k">ผู้รับ</span><span class="v">${c.operator}</span></div>
-      <div class="rqc-section-label">ผลตรวจสอบคุณภาพ (QC)</div>
+      <div class="rqc-section-label">ผลตรวจสอบคุณภาพ (QC) — รายละเอียด</div>
       ${qc ? `
-      <div class="rqc-row"><span class="k">ลักษณะภายนอก</span><span class="v">${qc.appearance||'-'}</span></div>
+      ${renderChecklistDetail(qc.checklist)}
+      <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin:6px 0 2px;">ทั่วไป</div>
       <div class="rqc-row"><span class="k">อุณหภูมิ</span><span class="v">${qc.temp_actual!=null?qc.temp_actual+'°C':'-'}</span></div>
       <div class="rqc-row"><span class="k">ผู้ตรวจ</span><span class="v">${qc.operator||'-'}</span></div>
       <div class="rqc-row"><span class="k">วันที่ตรวจ</span><span class="v">${fmtDT(qc.inspect_date)}</span></div>
       <div class="rqc-row"><span class="k">หมายเหตุ</span><span class="v" style="font-weight:400;color:var(--ink-soft);">${qc.note||'-'}</span></div>
-      <div class="rqc-row"><span class="k">สารเคมีตกค้าง</span><span class="v">${({pending:'⏳ รอผล',passed:'✅ ผ่าน',failed:'❌ ไม่ผ่าน'})[qc.chemical_status||'pending']}</span></div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink-soft);margin:6px 0 2px;">สารเคมีตกค้าง (Non-blocking)</div>
+      <div class="rqc-row"><span class="k">ผลตรวจ</span><span class="v">${CHEM_LABEL[qc.chemical_status||'pending']}</span></div>
+      <div class="rqc-row"><span class="k">หมายเหตุเคมี</span><span class="v" style="font-weight:400;color:var(--ink-soft);">${qc.chemical_note||'-'}</span></div>
       ` : `<div style="font-size:12.5px;color:var(--ink-soft);padding:4px 0;">ยังไม่ได้ตรวจ QC</div>`}
     </div>`;
   }).join('');
@@ -931,15 +951,28 @@ window.exportTab = function(tab) {
       headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า','SKU','RM ที่ใส่','FG ที่ได้','หน่วย','Yield %'];
       rows=(reportData.yieldRows||[]).map(r=>[r.po_number,fmtDT(r.completed_at),r.operator,r.lot_number,r.product,r.sku,r.rm_qty,r.fg_qty,r.unit,r.yield_pct]);
       filename='รายงาน Yield'; break;
-    case 'receiveqc':
-      headers=['วันที่รับ','เลขที่ใบรับ','Supplier','SKU','วัตถุดิบ','Lot','น้ำหนักรับ','หน่วย','Supplier Lot','EXP','ผู้รับ','ผลตรวจ QC','ลักษณะภายนอก','อุณหภูมิ','ผู้ตรวจ QC','วันที่ตรวจ','หมายเหตุ QC'];
+    case 'receiveqc': {
+      const CHECKLIST_KEYS = [
+        ['vehicle_ok','สภาพรถ'], ['container_ok','สภาพภาชนะ'],
+        ['size_shape_ok','ขนาด/รูปร่าง'], ['ripeness_ok','สุก/ดิบ'], ['color_smell_ok','สี/กลิ่น'], ['spoilage_ok','เน่าเสีย'], ['bruising_ok','รอยช้ำ'],
+        ['mold_ok','เชื้อรา'], ['insects_ok','แมลง/หนอน/ไข่แมลง'], ['plant_disease_ok','โรคพืช'],
+      ];
+      headers=['วันที่รับ','เลขที่ใบรับ','Supplier','SKU','วัตถุดิบ','Lot','น้ำหนักรับ','หน่วย','Supplier Lot','EXP','ผู้รับ','ผลตรวจ QC',
+        ...CHECKLIST_KEYS.map(([,label])=>label),
+        'อุณหภูมิ','ผู้ตรวจ QC','วันที่ตรวจ','หมายเหตุ QC','สารเคมีตกค้าง','หมายเหตุเคมี'];
       rows=(reportData.receiveqc||[]).map(c=>{
         const qc=c.qc;
         const qcLabel = qc ? ({passed:'ผ่าน',failed:'ไม่ผ่าน',on_hold:'พักไว้'}[qc.result]||qc.result) : 'รอ QC';
+        const checklistCells = CHECKLIST_KEYS.map(([key])=>{
+          if (!qc || !qc.checklist) return '-';
+          return qc.checklist[key]===false ? 'พบปัญหา' : 'ปกติ';
+        });
+        const chemLabel = qc ? ({pending:'รอผล',passed:'ผ่าน',failed:'ไม่ผ่าน'}[qc.chemical_status||'pending']) : '-';
         return [fmtDate(c.receive_date),c.ro_number,c.supplier,c.sku,c.material_name,c.lot_number,c.qty,c.unit,c.supplier_lot,c.exp_date?fmtDate(c.exp_date):'-',c.operator,
-          qcLabel, qc?.appearance||'-', qc?.temp_actual??'-', qc?.operator||'-', qc?fmtDT(qc.inspect_date):'-', qc?.note||'-'];
+          qcLabel, ...checklistCells, qc?.temp_actual??'-', qc?.operator||'-', qc?fmtDT(qc.inspect_date):'-', qc?.note||'-', chemLabel, qc?.chemical_note||'-'];
       });
       filename='รายงานรับสินค้าQC'; break;
+    }
     case 'ledger':
       headers=['วันที่','ประเภท','Lot','รับเข้า','จ่ายออก','คงเหลือสะสม','หน่วย','ผู้ดำเนินการ','อ้างอิง/หมายเหตุ'];
       (reportData.ledger||[]).forEach(g => {
