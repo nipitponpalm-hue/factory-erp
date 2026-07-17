@@ -417,7 +417,7 @@ async function loadProduction(from, to) {
       .gte('completed_at',from).lte('completed_at',to)
       .order('completed_at',{ascending:false}),
     db.from('repack_orders')
-      .select('id,rp_number,repack_date,operator,repack_inputs(qty_used,unit,lot_id),repack_outputs(qty_output,unit)')
+      .select('id,rp_number,repack_date,operator,repack_inputs(qty_used,unit,lot_id),repack_outputs(qty_output,unit,grade)')
       .gte('repack_date',from.slice(0,10)).lte('repack_date',to.slice(0,10))
       .order('repack_date',{ascending:false}),
   ]);
@@ -458,6 +458,7 @@ async function loadProduction(from, to) {
     ...prodData.map(r=>({ _type:'prod', ...r, inputs: inputMap[r.id]||[] })),
     ...rpData.map(r=>({ _type:'repack', ...r })),
   ];
+  reportData.rpLotMap = rpLotMap;
 
   const body  = document.getElementById('productionBody');
   const empty = document.getElementById('productionEmpty');
@@ -492,13 +493,14 @@ async function loadProduction(from, to) {
       const yldPct   = totalIn>0 ? parseFloat((totalOut/totalIn*100).toFixed(1)) : null;
       const lossPct  = yldPct!=null ? (100-yldPct).toFixed(1) : null;
       const inps     = (r.repack_inputs||[]).map(i=>{ const l=rpLotMap[i.lot_id]; return `<span style="white-space:nowrap;">${l?.materials?.name||'?'} ${fmtQty(i.qty_used)} ${i.unit}</span>`; }).join('<br>');
+      const outs     = (r.repack_outputs||[]).map(o=>`<span style="white-space:nowrap;">${o.grade?`เกรด ${o.grade}: `:''}${fmtQty(o.qty_output)} ${o.unit}</span>`).join('<br>');
       return `<tr>
         <td><span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:5px;font-weight:700;">คัด/รีแพ็ค</span></td>
         <td><span class="lot-num">${r.rp_number}</span></td>
         <td style="font-size:12.5px;">${fmtDate(r.repack_date)}</td>
         <td>${r.operator||'-'}</td>
         <td style="font-size:12.5px;line-height:1.7;">${inps||'-'}</td>
-        <td style="text-align:right;font-weight:700;">${fmtQty(totalOut)}</td>
+        <td style="text-align:right;font-weight:700;font-size:12.5px;line-height:1.7;">${outs||'-'}</td>
         <td>${unit}</td>
         <td style="text-align:right;font-weight:800;color:${yColor(yldPct)};">${yldPct!=null?yldPct+'%':'-'}</td>
         <td style="text-align:right;font-weight:800;color:${yColor(yldPct)};">${lossPct!=null?lossPct+'%':'-'}</td>
@@ -914,17 +916,43 @@ window.exportTab = function(tab) {
       });
       filename='รายงานใบสั่งซื้อ'; break;
     case 'production':
-      headers=['เลขที่ใบผลิต','วันผลิต','ผู้ผลิต','FG Lot','สินค้า (ผลผลิต)','SKU','จำนวนผลิต','หน่วย','วัตถุดิบที่ใช้ (SKU)','วัตถุดิบที่ใช้','RM Lot','จำนวน RM','หน่วย RM','Yield %'];
+      headers=['ประเภท','เลขที่','วันที่','ผู้ดำเนินการ','Output Lot','สินค้า/เกรด','SKU','จำนวน Output','หน่วย','วัตถุดิบที่ใช้ (SKU)','วัตถุดิบที่ใช้','RM Lot','จำนวน RM','หน่วย RM','Yield %','Loss %'];
       rows=[];
       (reportData.productionRows||[]).forEach(r=>{
-        const fg=r.fg_lots?.[0];
-        const base=[r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];
-        if (r.inputs?.length) {
-          r.inputs.forEach((inp,i)=>{
-            rows.push([...base, inp.rm_lots?.materials?.sku||'-', inp.rm_lots?.materials?.name||'-', inp.rm_lots?.lot_number||'-', inp.qty_used, inp.unit, i===0?(fg?.yield_pct!=null?fg.yield_pct+'%':'-'):'']);
-          });
+        if (r._type==='prod') {
+          const fg=r.fg_lots?.[0];
+          const yld = fg?.yield_pct;
+          const loss = yld!=null ? (100-yld).toFixed(1)+'%' : '-';
+          const base=['ผลิต FG',r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];
+          if (r.inputs?.length) {
+            r.inputs.forEach((inp,i)=>{
+              rows.push([...base, inp.rm_lots?.materials?.sku||'-', inp.rm_lots?.materials?.name||'-', inp.rm_lots?.lot_number||'-', inp.qty_used, inp.unit, i===0?(yld!=null?yld+'%':'-'):'', i===0?loss:'']);
+            });
+          } else {
+            rows.push([...base,'-','-','-','-','-',yld!=null?yld+'%':'-',loss]);
+          }
         } else {
-          rows.push([...base,'-','-','-','-','-',fg?.yield_pct!=null?fg.yield_pct+'%':'-']);
+          const totalIn  = (r.repack_inputs||[]).reduce((s,i)=>s+(i.qty_used||0),0);
+          const totalOut = (r.repack_outputs||[]).reduce((s,o)=>s+(o.qty_output||0),0);
+          const yldPct   = totalIn>0 ? parseFloat((totalOut/totalIn*100).toFixed(1)) : null;
+          const lossPct  = yldPct!=null ? (100-yldPct).toFixed(1)+'%' : '-';
+          const inputRows = (r.repack_inputs||[]).length ? r.repack_inputs : [null];
+          const outputRows = (r.repack_outputs||[]).length ? r.repack_outputs : [null];
+          // แสดงทุก output (เกรด) x ทุก input lot เพื่อให้เห็นครบทั้งสองฝั่ง
+          outputRows.forEach((out,oi) => {
+            inputRows.forEach((inp,ii) => {
+              const l = inp ? (reportData.rpLotMap||{})[inp.lot_id] : null;
+              rows.push([
+                'คัด/รีแพ็ค', r.rp_number, fmtDate(r.repack_date), r.operator||'-',
+                '-', out?.grade?`เกรด ${out.grade}`:'-', '-',
+                (ii===0 && out) ? out.qty_output : '', out?.unit||'-',
+                l?.materials?.sku||'-', l?.materials?.name||'-', l?.lot_number||'-',
+                inp?.qty_used??'', inp?.unit||'-',
+                (oi===0&&ii===0)?(yldPct!=null?yldPct+'%':'-'):'',
+                (oi===0&&ii===0)?lossPct:'',
+              ]);
+            });
+          });
         }
       });
       filename='รายงานการผลิต'; break;
