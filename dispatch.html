@@ -170,7 +170,7 @@ async function loadMaster() {
     db.from('customers').select('id,name,contact').eq('is_active',true).order('name'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
     db.from('rm_lots')
-      .select('id,lot_number,exp_date,receive_date,unit,rm_stock(qty_on_hand),materials(sku,name)')
+      .select('id,lot_number,exp_date,receive_date,unit,grade,rm_stock(qty_on_hand),materials(sku,name)')
       .eq('status','available').eq('is_processed',true).order('receive_date',{ascending:true}),
     db.from('fg_lots')
       .select('id,lot_number,exp_date,produced_date,unit,fg_stock(qty_on_hand),products(sku,name)')
@@ -181,7 +181,7 @@ async function loadMaster() {
 
   const rmStock = (rmRes.data||[])
     .filter(l=>l.rm_stock?.qty_on_hand>0)
-    .map(l=>({ type:'rm', id:l.id, lot_number:l.lot_number, name:l.materials?.name||'-', sku:l.materials?.sku||'-', unit:l.unit, qty_on_hand:l.rm_stock.qty_on_hand, exp_date:l.exp_date||null }));
+    .map(l=>({ type:'rm', id:l.id, lot_number:l.lot_number, name:l.materials?.name||'-', sku:l.materials?.sku||'-', unit:l.unit, qty_on_hand:l.rm_stock.qty_on_hand, exp_date:l.exp_date||null, grade:l.grade||null }));
 
   const fgStock = (fgRes.data||[])
     .filter(l=>l.fg_stock?.qty_on_hand>0)
@@ -240,6 +240,7 @@ function renderStockList(q) {
         <span style="font-size:13px;font-weight:600;margin-left:6px;">${l.name}</span>
         <span style="font-size:11.5px;color:var(--ink-soft);margin-left:4px;">(${l.sku})</span><br>
         <span style="font-size:12px;color:var(--green-deep);margin-top:2px;display:inline-block;">สต็อก: ${fmtQty(l.qty_on_hand)} ${l.unit}</span>
+        ${l.grade?`<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">เกรด ${l.grade}</span>`:''}
         ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:8px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
         ${inCart?`<span style="font-size:11px;color:var(--green-deep);font-weight:700;margin-left:8px;">✓ อยู่ในรายการ</span>`:''}
       </div>

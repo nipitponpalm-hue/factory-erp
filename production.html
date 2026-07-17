@@ -259,12 +259,11 @@
     <!-- RP STEP 3: Output -->
     <div class="card">
       <div class="card-title"><span class="step-badge">3</span> ผลลัพธ์หลังคัด (RM Output)</div>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">ระบุจำนวนที่ได้หลังคัด — ระบบจะสร้าง RM Lot ใหม่ SKU เดิม</p>
-      <div class="row">
-        <div class="field">
-          <label>จำนวนที่ได้ *</label>
-          <input type="number" id="rpQtyOut" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
-        </div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:12px;">แยกผลผลิตตามเกรดได้ — ของที่คัดออกไม่ใช่ของเสียเสมอไป (SKU เดิมทุกเกรด)</p>
+      <div id="rpOutputRows"></div>
+      <button class="btn btn-ghost btn-sm" id="rpAddOutputBtn" type="button">+ เพิ่มเกรดผลผลิต</button>
+      <datalist id="rpGradeSuggestions"><option value="A"><option value="B"><option value="C"><option value="คัดออก"></datalist>
+      <div class="row" style="margin-top:16px;">
         <div class="field">
           <label>หน่วย</label>
           <input type="text" id="rpUnitDisplay" readonly placeholder="-">
@@ -813,9 +812,51 @@ window.switchTab = function(tab) {
   window.rpUpdateQty = function(i,val){ rpInputs[i].qty_used=parseFloat(val)||0; rpCalcLoss(); rpCheckConfirm(); };
   window.rpRemove    = function(i){ rpInputs.splice(i,1); rpRenderTable(); rpCalcLoss(); };
 
+  // ===== OUTPUT ROWS (หลายเกรดต่อการคัด 1 ครั้ง) =====
+  let rpOutputs = [{ grade:'', qty:'' }];
+
+  function rpRenderOutputRows() {
+    const wrap = document.getElementById('rpOutputRows');
+    wrap.innerHTML = rpOutputs.map((o,i) => `
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:8px;">
+        <div class="field" style="flex:1;">
+          <label>เกรด (ถ้ามี)</label>
+          <input type="text" class="rp-out-grade" data-i="${i}" list="rpGradeSuggestions" placeholder="เช่น A, B, คัดออก" value="${o.grade}">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>จำนวน *</label>
+          <input type="number" class="rp-out-qty" data-i="${i}" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal" value="${o.qty}">
+        </div>
+        ${rpOutputs.length>1 ? `<button class="btn-icon rp-out-remove" data-i="${i}" style="color:var(--red);margin-bottom:8px;">✕</button>` : ''}
+      </div>`).join('');
+
+    wrap.querySelectorAll('.rp-out-grade').forEach(inp => inp.addEventListener('input', e => {
+      rpOutputs[Number(e.target.dataset.i)].grade = e.target.value;
+    }));
+    wrap.querySelectorAll('.rp-out-qty').forEach(inp => inp.addEventListener('input', e => {
+      rpOutputs[Number(e.target.dataset.i)].qty = e.target.value;
+      rpCalcLoss(); rpCheckConfirm();
+    }));
+    wrap.querySelectorAll('.rp-out-remove').forEach(btn => btn.addEventListener('click', e => {
+      rpOutputs.splice(Number(e.target.dataset.i),1);
+      rpRenderOutputRows(); rpCalcLoss(); rpCheckConfirm();
+    }));
+  }
+
+  document.getElementById('rpAddOutputBtn').addEventListener('click', () => {
+    rpOutputs.push({ grade:'', qty:'' });
+    rpRenderOutputRows();
+  });
+
+  rpRenderOutputRows();
+
+  function rpTotalOut() {
+    return rpOutputs.reduce((s,o)=>s+(parseFloat(o.qty)||0),0);
+  }
+
   function rpCalcLoss() {
     const totalIn  = rpInputs.reduce((s,r)=>s+(r.qty_used||0),0);
-    const qtyOut   = parseFloat(document.getElementById('rpQtyOut').value)||0;
+    const qtyOut   = rpTotalOut();
     const box      = document.getElementById('rpLossBox');
     if (!totalIn||!qtyOut){ box.style.display='none'; return; }
     const loss    = totalIn - qtyOut;
@@ -829,7 +870,7 @@ window.switchTab = function(tab) {
     document.getElementById('rpYieldVal').style.color=high?'#92400E':'#065F46';
     document.getElementById('rpLossVal').textContent=`${lossPct}%`;
     document.getElementById('rpLossVal').style.color=high?'#92400E':'#065F46';
-    document.getElementById('rpLossDetail').textContent=`Input ${fmtQty(totalIn)} → Output ${fmtQty(qtyOut)} | สูญเสีย ${fmtQty(Math.max(0,loss))} ${rpInputs[0]?.unit||''}`;
+    document.getElementById('rpLossDetail').textContent=`Input ${fmtQty(totalIn)} → Output ${fmtQty(qtyOut)} (${rpOutputs.filter(o=>parseFloat(o.qty)>0).length} เกรด) | สูญเสียจริง ${fmtQty(Math.max(0,loss))} ${rpInputs[0]?.unit||''}`;
   }
 
   function rpCheckConfirm() {
@@ -837,11 +878,10 @@ window.switchTab = function(tab) {
       && document.getElementById('rpDate').value
       && rpInputs.length>0
       && rpInputs.every(r=>r.qty_used>0)
-      && parseFloat(document.getElementById('rpQtyOut').value)>0;
+      && rpOutputs.some(o=>parseFloat(o.qty)>0);
     document.getElementById('rpConfirmBtn').disabled=!ok;
   }
 
-  document.getElementById('rpQtyOut').addEventListener('input',()=>{ rpCalcLoss(); rpCheckConfirm(); });
   document.getElementById('rpDate').addEventListener('change', rpCheckConfirm);
   document.getElementById('rpOprInput').addEventListener('input', rpCheckConfirm);
 
@@ -850,12 +890,13 @@ window.switchTab = function(tab) {
     const operator  = document.getElementById('rpOprInput').value.trim();
     const rpDate    = document.getElementById('rpDate').value;
     const rpNote    = document.getElementById('rpNote').value.trim()||null;
-    const qtyOut    = parseFloat(document.getElementById('rpQtyOut').value);
+    const validOutputs = rpOutputs.filter(o=>parseFloat(o.qty)>0).map(o=>({ grade:o.grade.trim()||null, qty:parseFloat(o.qty) }));
     const expDate   = document.getElementById('rpExpDate').value||null;
     const outNote   = document.getElementById('rpOutNote').value.trim()||null;
     const matId     = rpInputs[0]?.material_id;
     const unit      = rpInputs[0]?.unit;
     const totalIn   = rpInputs.reduce((s,r)=>s+r.qty_used,0);
+    const qtyOut    = validOutputs.reduce((s,o)=>s+o.qty,0);
 
     document.getElementById('rpConfirmBtn').disabled=true;
     showLoading(true);
@@ -882,44 +923,50 @@ window.switchTab = function(tab) {
         });
       }
 
-      // 4. สร้าง RM Lot ใหม่ (SKU เดิม)
-      const newLotNumber = await generateLotNumber('RM');
-      const { data:newLot, error:lotErr } = await db.from('rm_lots').insert({
-        lot_number:    newLotNumber,
-        material_id:   matId,
-        receive_date:  rpDate,
-        exp_date:      expDate,
-        initial_qty:   qtyOut,
-        unit,
-        status:        'available',
-        is_processed:  true,
-      }).select('id').single();
-      if (lotErr) throw lotErr;
+      // 4. สร้าง RM Lot ใหม่ต่อเกรด (SKU เดิม)
+      const newLotNumbers = [];
+      for (const out of validOutputs) {
+        const newLotNumber = await generateLotNumber('RM');
+        newLotNumbers.push(out.grade ? `${newLotNumber} (${out.grade})` : newLotNumber);
+        const { data:newLot, error:lotErr } = await db.from('rm_lots').insert({
+          lot_number:    newLotNumber,
+          material_id:   matId,
+          receive_date:  rpDate,
+          exp_date:      expDate,
+          initial_qty:   out.qty,
+          unit,
+          status:        'available',
+          is_processed:  true,
+          grade:         out.grade,
+        }).select('id').single();
+        if (lotErr) throw lotErr;
 
-      // 5. rm_stock สำหรับ lot ใหม่
-      await db.from('rm_stock').insert({ lot_id:newLot.id, qty_on_hand:qtyOut });
+        // 5. rm_stock สำหรับ lot ใหม่
+        await db.from('rm_stock').insert({ lot_id:newLot.id, qty_on_hand:out.qty });
 
-      // 6. rm_transaction เพิ่มเข้า
-      await db.from('rm_transactions').insert({
-        lot_id:newLot.id, txn_type:'repack_in', qty:qtyOut,
-        ref_id:rpo.id, ref_type:'repack_order', operator,
-        note:`ผลลัพธ์คัด/รีแพ็ค RP: ${rpNumber}`
-      });
+        // 6. rm_transaction เพิ่มเข้า
+        await db.from('rm_transactions').insert({
+          lot_id:newLot.id, txn_type:'repack_in', qty:out.qty,
+          ref_id:rpo.id, ref_type:'repack_order', operator,
+          note:`ผลลัพธ์คัด/รีแพ็ค RP: ${rpNumber}${out.grade?' เกรด '+out.grade:''}`
+        });
 
-      // 7. repack_outputs
-      await db.from('repack_outputs').insert({ rp_id:rpo.id, material_id:matId, qty_output:qtyOut, unit, new_lot_id:newLot.id });
+        // 7. repack_outputs
+        await db.from('repack_outputs').insert({ rp_id:rpo.id, material_id:matId, qty_output:out.qty, unit, new_lot_id:newLot.id, grade:out.grade });
+      }
 
       const lossPct = totalIn>0?((totalIn-qtyOut)/totalIn*100).toFixed(1):'0';
-      showToast(`✅ บันทึกการคัดสำเร็จ — ${rpNumber} | RM Lot ใหม่: ${newLotNumber} | Loss: ${lossPct}%`);
+      showToast(`✅ บันทึกการคัดสำเร็จ — ${rpNumber} | RM Lot ใหม่: ${newLotNumbers.join(', ')} | Loss: ${lossPct}%`);
 
       // reset
       rpInputs=[];
       rpRenderTable();
+      rpOutputs=[{ grade:'', qty:'' }];
+      rpRenderOutputRows();
       rpCalcLoss();
       document.getElementById('rpOprInput').value='';
       document.getElementById('rpDate').value=toDateInput();
       document.getElementById('rpNote').value='';
-      document.getElementById('rpQtyOut').value='';
       document.getElementById('rpUnitDisplay').value='';
       document.getElementById('rpExpDate').value='';
       document.getElementById('rpOutNote').value='';
@@ -937,11 +984,12 @@ window.switchTab = function(tab) {
   document.getElementById('rpResetBtn').addEventListener('click',()=>{
     rpInputs=[];
     rpRenderTable();
+    rpOutputs=[{ grade:'', qty:'' }];
+    rpRenderOutputRows();
     rpCalcLoss();
     document.getElementById('rpOprInput').value='';
     document.getElementById('rpMatInput').value='';
     document.getElementById('rpMatId').value='';
-    document.getElementById('rpQtyOut').value='';
     document.getElementById('rpUnitDisplay').value='';
     document.getElementById('rpExpDate').value='';
     document.getElementById('rpOutNote').value='';
