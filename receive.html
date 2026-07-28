@@ -23,6 +23,7 @@
 .po-recv-inputs .field { min-width:120px; flex:1; margin:0; }
 .po-recv-inputs label { font-size:11.5px; margin-bottom:3px; }
 .po-recv-inputs input { font-size:13.5px; padding:6px 8px; }
+.ro-lot-badge { display:inline-block; background:var(--green-deep); color:#fff; font-weight:800; font-size:13px; letter-spacing:.3px; padding:3px 9px; border-radius:5px; margin:2px 3px 2px 0; white-space:nowrap; }
 
 /* PO Picker Modal */
 .po-picker-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px; }
@@ -211,7 +212,7 @@
     <div class="card-title">ใบรับสินค้าล่าสุด</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>เลขที่ใบรับ</th><th>Supplier</th><th>วันที่รับ</th><th>ผู้รับ</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
+        <thead><tr><th>เลขที่ใบรับ</th><th>Supplier</th><th>วันที่รับ</th><th>ผู้รับ</th><th>RM Lot</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
         <tbody id="roBody"></tbody>
       </table>
     </div>
@@ -784,14 +785,30 @@ async function loadRecentRO() {
   const empty = document.getElementById('roEmpty');
   if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
-  body.innerHTML = data.map(r => `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;" title="คลิกดูรายละเอียด">
+
+  // ดึงเลข RM Lot ของแต่ละใบรับ (ผ่าน receive_items -> rm_lots.ro_item_id)
+  const itemIds = data.flatMap(r => (r.receive_items||[]).map(i=>i.id));
+  let lotsByItem = {};
+  if (itemIds.length) {
+    const { data: lots } = await db.from('rm_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds);
+    (lots||[]).forEach(l => { lotsByItem[l.ro_item_id] = l.lot_number; });
+  }
+
+  body.innerHTML = data.map(r => {
+    const lotNumbers = (r.receive_items||[]).map(i => lotsByItem[i.id]).filter(Boolean);
+    const lotHtml = lotNumbers.length
+      ? lotNumbers.map(ln => `<span class="ro-lot-badge">${ln}</span>`).join(' ')
+      : '<span style="color:var(--ink-soft);font-size:12px;">-</span>';
+    return `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;" title="คลิกดูรายละเอียด">
     <td><span class="lot-num">${r.ro_number}</span></td>
     <td>${r.suppliers?.name||'-'}</td>
     <td>${fmtDate(r.receive_date)}</td>
     <td>${r.operator}</td>
+    <td>${lotHtml}</td>
     <td style="text-align:center;">${r.receive_items?.length||0}</td>
     <td><span class="status-badge ${r.status==='confirmed'?'s-confirmed':'s-draft'}">${r.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'}</span></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   body.querySelectorAll('.clickable-row').forEach(row => {
     row.addEventListener('click', () => openRODetail(row.dataset.id));
   });
