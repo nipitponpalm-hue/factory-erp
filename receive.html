@@ -212,7 +212,7 @@
     <div class="card-title">ใบรับสินค้าล่าสุด</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>เลขที่ใบรับ</th><th>Supplier</th><th>วันที่รับ</th><th>ผู้รับ</th><th>RM Lot</th><th>จำนวนรายการ</th><th>สถานะ</th></tr></thead>
+        <thead><tr><th>เลขที่ใบรับ</th><th>Supplier</th><th>วันที่รับ</th><th>ผู้รับ</th><th>วัตถุดิบ</th><th>RM Lot</th><th style="text-align:right;">จำนวน</th><th>สถานะ</th></tr></thead>
         <tbody id="roBody"></tbody>
       </table>
     </div>
@@ -777,7 +777,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 async function loadRecentRO() {
   const { data } = await db
     .from('receive_orders')
-    .select('id, ro_number, receive_date, operator, status, suppliers(name), receive_items(id)')
+    .select('id, ro_number, receive_date, operator, status, suppliers(name), receive_items(id, qty, unit, material_id, materials(sku,name))')
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -786,7 +786,7 @@ async function loadRecentRO() {
   if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
 
-  // ดึงเลข RM Lot ของแต่ละใบรับ (ผ่าน receive_items -> rm_lots.ro_item_id)
+  // ดึงเลข RM Lot ของแต่ละรายการ (ผ่าน receive_items -> rm_lots.ro_item_id)
   const itemIds = data.flatMap(r => (r.receive_items||[]).map(i=>i.id));
   let lotsByItem = {};
   if (itemIds.length) {
@@ -794,21 +794,22 @@ async function loadRecentRO() {
     (lots||[]).forEach(l => { lotsByItem[l.ro_item_id] = l.lot_number; });
   }
 
-  body.innerHTML = data.map(r => {
-    const lotNumbers = (r.receive_items||[]).map(i => lotsByItem[i.id]).filter(Boolean);
-    const lotHtml = lotNumbers.length
-      ? lotNumbers.map(ln => `<span class="ro-lot-badge">${ln}</span>`).join(' ')
-      : '<span style="color:var(--ink-soft);font-size:12px;">-</span>';
-    return `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;" title="คลิกดูรายละเอียด">
-    <td><span class="lot-num">${r.ro_number}</span></td>
-    <td>${r.suppliers?.name||'-'}</td>
-    <td>${fmtDate(r.receive_date)}</td>
-    <td>${r.operator}</td>
-    <td>${lotHtml}</td>
-    <td style="text-align:center;">${r.receive_items?.length||0}</td>
-    <td><span class="status-badge ${r.status==='confirmed'?'s-confirmed':'s-draft'}">${r.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'}</span></td>
-  </tr>`;
+  body.innerHTML = data.map((r, ri) => {
+    const items = r.receive_items?.length ? r.receive_items : [null];
+    const statusBadge = `<span class="status-badge ${r.status==='confirmed'?'s-confirmed':'s-draft'}">${r.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'}</span>`;
+    const bg = ri % 2 === 0 ? 'var(--bg)' : 'var(--surface)';
+    return items.map((it, i) => `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;background:${bg};${i>0?'border-top:none;':''}" title="คลิกดูรายละเอียด">
+      <td>${i===0?`<span class="lot-num">${r.ro_number}</span>`:''}</td>
+      <td>${i===0?(r.suppliers?.name||'-'):''}</td>
+      <td>${i===0?fmtDate(r.receive_date):''}</td>
+      <td>${i===0?r.operator:''}</td>
+      <td>${it?.materials?.name?`${it.materials.name} <span style="font-size:11px;color:var(--ink-soft);">(${it.materials.sku})</span>`:'-'}</td>
+      <td>${it ? (lotsByItem[it.id]?`<span class="ro-lot-badge">${lotsByItem[it.id]}</span>`:'<span style="color:var(--ink-soft);font-size:12px;">-</span>') : '-'}</td>
+      <td style="text-align:right;">${it?`${fmtQty(it.qty)} ${it.unit}`:'-'}</td>
+      <td>${i===0?statusBadge:''}</td>
+    </tr>`).join('');
   }).join('');
+
   body.querySelectorAll('.clickable-row').forEach(row => {
     row.addEventListener('click', () => openRODetail(row.dataset.id));
   });
