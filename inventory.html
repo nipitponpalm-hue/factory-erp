@@ -220,7 +220,11 @@
 <script>
 (function(){
 
-const CAT_LABEL = { veg:'ผัก/ผลไม้', fresh:'อาหารสด', dry:'ของแห้ง', spice:'เครื่องปรุง', drink:'เครื่องดื่ม', pack:'บรรจุภัณฑ์', other:'อื่นๆ' };
+let CAT_LABEL = {};
+async function loadCategories() {
+  const { data } = await db.from('categories').select('code,label');
+  CAT_LABEL = Object.fromEntries((data||[]).map(c => [c.code, c.label]));
+}
 const TXN_LABEL = { receive:'รับเข้า', issue:'เบิกออก', adjust:'ปรับปรุง', return:'คืน', waste:'ของเสีย', qc_passed:'QC ผ่าน' };
 
 let allLots = [], allTxns = [];
@@ -477,6 +481,7 @@ document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
 // ===== INIT =====
 (async function init() {
   showLoading(true);
+  await loadCategories();
   await loadAll();
   showLoading(false);
 })();

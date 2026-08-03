@@ -301,7 +301,11 @@ let currentTab='receive';
 let reportData = {};  // cache ข้อมูลแต่ละ tab
 
 // ===== CATEGORY FILTER =====
-const CAT_LABEL = { veg:'ผัก/ผลไม้', fresh:'อาหารสด', dry:'ของแห้ง', spice:'เครื่องปรุง', drink:'เครื่องดื่ม', pack:'บรรจุภัณฑ์', processed:'อาหารแปรรูป', frozen:'แช่แข็ง', other:'อื่นๆ' };
+let CAT_LABEL = {};
+async function loadCategoryLabels() {
+  const { data } = await db.from('categories').select('code,label').eq('is_active',true).order('sort_order');
+  CAT_LABEL = Object.fromEntries((data||[]).map(c => [c.code, c.label]));
+}
 const CAT_STORAGE_KEY = 'erp_report_cats';
 let selectedCats = [];   // [] = ทุกหมวดหมู่ (ไม่กรอง)
 let catsDirty = false;
@@ -1117,6 +1121,7 @@ window.exportTab = function(tab) {
 (async function init(){
   try { selectedCats = JSON.parse(localStorage.getItem(CAT_STORAGE_KEY)) || []; } catch { selectedCats = []; }
   if (!Array.isArray(selectedCats)) selectedCats = [];
+  await loadCategoryLabels();
   renderCatFilter();
   setRange(30);
   await loadAll();

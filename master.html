@@ -51,6 +51,7 @@
     <button class="tab-btn" data-tab="materials">วัตถุดิบ</button>
     <button class="tab-btn" data-tab="products">สินค้าสำเร็จรูป</button>
     <button class="tab-btn" data-tab="operators">ผู้ปฏิบัติงาน</button>
+    <button class="tab-btn" data-tab="categories">หมวดหมู่</button>
   </div>
 
   <!-- SUPPLIERS -->
@@ -147,13 +148,6 @@
           <label>หมวดหมู่ *</label>
           <select id="mat-category">
             <option value="">-- เลือก --</option>
-            <option value="veg">ผัก/ผลไม้</option>
-            <option value="fresh">อาหารสด</option>
-            <option value="dry">ของแห้ง</option>
-            <option value="spice">เครื่องปรุง</option>
-            <option value="drink">เครื่องดื่ม</option>
-            <option value="pack">บรรจุภัณฑ์</option>
-            <option value="other">อื่นๆ</option>
           </select>
         </div>
         <div class="field"><label>หน่วย *</label><input type="text" id="mat-unit" placeholder="กก., ลิตร, ชิ้น"></div>
@@ -209,11 +203,6 @@
           <label>หมวดหมู่ *</label>
           <select id="prd-category">
             <option value="">-- เลือก --</option>
-            <option value="processed">อาหารแปรรูป</option>
-            <option value="frozen">แช่แข็ง</option>
-            <option value="fresh">สด</option>
-            <option value="dry">แห้ง</option>
-            <option value="other">อื่นๆ</option>
           </select>
         </div>
         <div class="field"><label>หน่วย *</label><input type="text" id="prd-unit" placeholder="กก., ถุง, กล่อง"></div>
@@ -276,6 +265,34 @@
         <tbody id="opr-body"></tbody></table>
       </div>
       <div id="opr-empty" class="empty-row">ยังไม่มีข้อมูล</div>
+    </div>
+  </div>
+
+  <div id="tab-categories" style="display:none;">
+    <div class="card">
+      <div class="card-title">เพิ่ม / แก้ไข หมวดหมู่</div>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">ใช้ร่วมกันทั้งวัตถุดิบและสินค้าสำเร็จรูป</p>
+      <input type="hidden" id="cat-id">
+      <div class="row">
+        <div class="field">
+          <label>รหัส (code) * <span style="font-weight:400;color:var(--ink-soft);">แก้ไขไม่ได้หลังสร้าง</span></label>
+          <input type="text" id="cat-code" placeholder="เช่น veg">
+        </div>
+        <div class="field-lg"><label>ชื่อแสดงผล *</label><input type="text" id="cat-label" placeholder="เช่น ผัก/ผลไม้"></div>
+        <div class="field"><label>ลำดับ</label><input type="number" id="cat-sort" placeholder="0" min="0"></div>
+      </div>
+      <div class="save-bar">
+        <button class="btn btn-ghost btn-sm" id="cat-clear">ล้าง</button>
+        <button class="btn btn-primary btn-sm" id="cat-save">บันทึก</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">รายการหมวดหมู่</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>รหัส</th><th>ชื่อแสดงผล</th><th style="text-align:center;">ลำดับ</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="cat-body"></tbody></table>
+      </div>
+      <div id="cat-empty" class="empty-row">ยังไม่มีข้อมูล</div>
     </div>
   </div>
 
@@ -347,14 +364,88 @@
 (function(){
 
 const DEPT_LABEL = { receive:'รับสินค้า', warehouse:'คลังสินค้า', production:'ผลิต', qc:'QC', sales:'ขาย' };
-const CAT_LABEL  = { veg:'ผัก/ผลไม้', fresh:'อาหารสด', dry:'ของแห้ง', spice:'เครื่องปรุง', drink:'เครื่องดื่ม', pack:'บรรจุภัณฑ์', other:'อื่นๆ', processed:'อาหารแปรรูป', frozen:'แช่แข็ง' };
+
+// ===== CATEGORIES (โหลดจาก DB แทนการ hardcode) =====
+let categories = [];
+let CAT_LABEL = {};
+
+async function loadCategories() {
+  const { data } = await db.from('categories').select('*').order('sort_order').order('label');
+  categories = data || [];
+  CAT_LABEL = Object.fromEntries(categories.map(c => [c.code, c.label]));
+  renderCategories();
+  renderCategoryOptions();
+}
+
+function renderCategoryOptions() {
+  const activeCats = categories.filter(c => c.is_active);
+  const optionsHtml = '<option value="">-- เลือก --</option>' + activeCats.map(c => `<option value="${c.code}">${c.label}</option>`).join('');
+  ['mat-category','prd-category'].forEach(id => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = optionsHtml;
+    sel.value = cur;
+  });
+}
+
+function renderCategories() {
+  const body = document.getElementById('cat-body');
+  const empty = document.getElementById('cat-empty');
+  if (!categories.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  body.innerHTML = categories.map(c => `<tr>
+    <td><code>${c.code}</code></td>
+    <td>${c.label}</td>
+    <td style="text-align:center;">${c.sort_order||0}</td>
+    <td>${statusBadge(c.is_active)}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="editCategory('${c.id}')">แก้ไข</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleCategory('${c.id}',${c.is_active})">${c.is_active?'ปิด':'เปิด'}</button>
+    </td>
+  </tr>`).join('');
+}
+
+function editCategory(id) {
+  const c = categories.find(x => x.id === id);
+  document.getElementById('cat-id').value = c.id;
+  document.getElementById('cat-code').value = c.code;
+  document.getElementById('cat-code').disabled = true;
+  document.getElementById('cat-label').value = c.label;
+  document.getElementById('cat-sort').value = c.sort_order||0;
+  window.scrollTo(0,0);
+}
+
+async function toggleCategory(id, cur) { await toggleActive('categories', id, cur); await loadCategories(); }
+
+document.getElementById('cat-clear').addEventListener('click', () => {
+  ['cat-id','cat-code','cat-label','cat-sort'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cat-code').disabled = false;
+});
+
+document.getElementById('cat-save').addEventListener('click', async () => {
+  const id    = document.getElementById('cat-id').value;
+  const code  = document.getElementById('cat-code').value.trim();
+  const label = document.getElementById('cat-label').value.trim();
+  const sort_order = parseInt(document.getElementById('cat-sort').value)||0;
+  if (!code || !label) { showToast('กรุณากรอกข้อมูลที่จำเป็น (*)', 'error'); return; }
+  const { error } = id
+    ? await db.from('categories').update({ label, sort_order }).eq('id', id)
+    : await db.from('categories').insert({ code, label, sort_order });
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('บันทึกสำเร็จ');
+  document.getElementById('cat-clear').click();
+  await loadCategories();
+});
+
+window.editCategory = editCategory;
+window.toggleCategory = toggleCategory;
 
 // ===== TABS =====
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['suppliers','customers','materials','products','operators'].forEach(t => {
+    ['suppliers','customers','materials','products','operators','categories'].forEach(t => {
       document.getElementById('tab-'+t).style.display = t === btn.dataset.tab ? '' : 'none';
     });
   });
@@ -820,6 +911,7 @@ window.toggleOperator = toggleOperator;
 // ===== INIT =====
 (async function init() {
   showLoading(true);
+  await loadCategories();
   await Promise.all([loadSuppliers(), loadCustomers(), loadMaterials(), loadProducts(), loadOperators()]);
   showLoading(false);
 })();
