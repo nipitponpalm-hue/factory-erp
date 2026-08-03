@@ -212,7 +212,7 @@ const CHEM_CLASS = { pending:'s-pending', passed:'s-available', failed:'s-on_hol
 async function loadData() {
   const [lotsRes, oprRes] = await Promise.all([
     db.from('rm_lots')
-      .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, ro_item_id, materials(sku,name), suppliers(name)')
+      .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, ro_item_id, materials(sku,name,requires_processing), suppliers(name)')
       .eq('status','qc_pending')
       .order('created_at'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
@@ -343,8 +343,9 @@ async function submitQC(result) {
 
     // 2. อัปเดต rm_lots status + rm_stock
     if (result === 'passed') {
-      // เปลี่ยน status เป็น available
-      const { error: lotErr } = await db.from('rm_lots').update({ status: 'available' }).eq('id', lotId);
+      // สินค้าซื้อมาขายไป (requires_processing=false) พร้อมจ่ายได้ทันที ไม่ต้องผ่านคัด/รีแพ็ค
+      const skipProcessing = lot.materials?.requires_processing === false;
+      const { error: lotErr } = await db.from('rm_lots').update({ status: 'available', is_processed: skipProcessing }).eq('id', lotId);
       if (lotErr) throw lotErr;
       // เติม stock
       const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
@@ -355,7 +356,7 @@ async function submitQC(result) {
         ref_type: 'qc_passed', operator,
         note: 'QC ผ่าน — เข้า Stock',
       });
-      showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`);
+      showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว${skipProcessing?' (พร้อมจ่ายทันที)':''}`);
 
     } else if (result === 'on_hold') {
       await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);

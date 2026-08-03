@@ -163,6 +163,12 @@
       <div class="row" style="margin-top:10px;">
         <div class="field-lg"><label>เงื่อนไขการเก็บรักษา</label><input type="text" id="mat-storage" placeholder="เก็บที่อุณหภูมิ 2-8°C"></div>
       </div>
+      <div class="row" style="margin-top:10px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer;">
+          <input type="checkbox" id="mat-requires-processing" checked style="width:16px;height:16px;accent-color:var(--green-deep);cursor:pointer;">
+          ต้องผ่านคัด/รีแพ็คก่อนจ่าย <span style="font-weight:400;color:var(--ink-soft);font-size:12.5px;">(ปิดถ้าเป็นสินค้าซื้อมาขายไป — พร้อมจ่ายหลัง QC ผ่านได้เลย)</span>
+        </label>
+      </div>
       <div class="save-bar">
         <button class="btn btn-ghost btn-sm" id="mat-clear">ล้าง</button>
         <button class="btn btn-primary btn-sm" id="mat-save">บันทึก</button>
@@ -182,7 +188,7 @@
     <div class="card">
       <div class="card-title">รายการวัตถุดิบ</div>
       <div class="table-wrap">
-        <table><thead><tr><th>SKU</th><th>ชื่อ</th><th>หมวดหมู่</th><th>หน่วย</th><th style="text-align:right;">Min Stock</th><th>อายุ (วัน)</th><th>สถานะ</th><th></th></tr></thead>
+        <table><thead><tr><th>SKU</th><th>ชื่อ</th><th>หมวดหมู่</th><th>หน่วย</th><th style="text-align:right;">Min Stock</th><th>อายุ (วัน)</th><th>ต้องคัด/รีแพ็ค</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="mat-body"></tbody></table>
       </div>
       <div id="mat-empty" class="empty-row">ยังไม่มีข้อมูล</div>
@@ -501,6 +507,7 @@ function renderMaterials() {
     <td>${m.unit}</td>
     <td style="text-align:right;">${fmtQty(m.min_stock)}</td>
     <td>${m.shelf_life_days||'-'}</td>
+    <td>${m.requires_processing!==false?'<span class="status-badge s-pending">ต้องคัด/รีแพ็ค</span>':'<span class="status-badge s-available">พร้อมจ่ายทันที</span>'}</td>
     <td>${statusBadge(m.is_active)}</td>
     <td style="display:flex;gap:6px;">
       <button class="btn btn-ghost btn-sm" onclick="editMaterial('${m.id}')">แก้ไข</button>
@@ -518,12 +525,14 @@ function editMaterial(id) {
   document.getElementById('mat-min').value      = m.min_stock||0;
   document.getElementById('mat-shelf').value    = m.shelf_life_days||'';
   document.getElementById('mat-storage').value  = m.storage_note||'';
+  document.getElementById('mat-requires-processing').checked = m.requires_processing !== false;
   window.scrollTo(0,0);
 }
 async function toggleMaterial(id, cur) { await toggleActive('materials', id, cur); await loadMaterials(); }
 document.getElementById('mat-clear').addEventListener('click', () => {
   ['mat-id','mat-sku','mat-name','mat-unit','mat-min','mat-shelf','mat-storage'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('mat-category').value = '';
+  document.getElementById('mat-requires-processing').checked = true;
 });
 document.getElementById('mat-save').addEventListener('click', async () => {
   const id       = document.getElementById('mat-id').value;
@@ -536,6 +545,7 @@ document.getElementById('mat-save').addEventListener('click', async () => {
     min_stock:       parseFloat(document.getElementById('mat-min').value)||0,
     shelf_life_days: parseInt(document.getElementById('mat-shelf').value)||null,
     storage_note:    document.getElementById('mat-storage').value.trim()||null,
+    requires_processing: document.getElementById('mat-requires-processing').checked,
   };
   const { error } = id
     ? await db.from('materials').update(payload).eq('id', id)
