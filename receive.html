@@ -304,6 +304,10 @@ let matSelected = null;
 let selectedPO = null;
 let selectedPOItems = [];
 
+// po_items รองรับทั้งวัตถุดิบ (material_id) และสินค้าสำเร็จรูป (product_id)
+function poItemRef(it) { return it.product_id ? it.products : it.materials; }
+function poItemIsFg(it) { return !!it.product_id; }
+
 // ===== LOAD MASTER DATA =====
 async function loadMaster() {
   const [supRes, matRes, oprRes, poRes] = await Promise.all([
@@ -321,7 +325,7 @@ async function loadMaster() {
   allPOItems = [];
   if (openPOs.length) {
     const poIds = openPOs.map(p=>p.id);
-    const { data: itemsData } = await db.from('po_items').select('id,po_id,material_id,qty_ordered,qty_received,unit,materials(sku,name)').in('po_id', poIds);
+    const { data: itemsData } = await db.from('po_items').select('id,po_id,material_id,product_id,qty_ordered,qty_received,unit,materials(sku,name),products(sku,name)').in('po_id', poIds);
     allPOItems = itemsData || [];
   }
 
@@ -345,7 +349,7 @@ function renderPODashboard() {
     const items = allPOItems.filter(it => it.po_id === po.id && (it.qty_ordered - it.qty_received) > 0);
     const chips = items.map(it => {
       const remain = (it.qty_ordered - it.qty_received).toFixed(2).replace(/\.?0+$/,'');
-      return `<span class="po-mat-chip">${it.materials?.name||'-'} <b>${remain}</b> ${it.unit}</span>`;
+      return `<span class="po-mat-chip">${poItemIsFg(it)?'<b style="color:#92400E;">FG</b> ':''}${poItemRef(it)?.name||'-'} <b>${remain}</b> ${it.unit}</span>`;
     }).join('');
     const badge = po.status === 'open'
       ? `<span class="pending-badge pending-open">ใหม่</span>`
@@ -385,7 +389,7 @@ function renderPicker(q) {
     return po.internal_ref.toLowerCase().includes(q)
       || (po.po_number||'').toLowerCase().includes(q)
       || (po.suppliers?.name||'').toLowerCase().includes(q)
-      || items.some(it => (it.materials?.name||'').toLowerCase().includes(q) || (it.materials?.sku||'').toLowerCase().includes(q));
+      || items.some(it => (poItemRef(it)?.name||'').toLowerCase().includes(q) || (poItemRef(it)?.sku||'').toLowerCase().includes(q));
   });
   renderPickerPage();
 }
@@ -408,7 +412,7 @@ function renderPickerPage() {
       const chips = items.map(it => {
         const remain = it.qty_ordered - it.qty_received;
         const cls = remain <= 0 ? 'over' : '';
-        return `<span class="po-mat-chip ${cls}">${it.materials?.name||'-'} · ${remain > 0 ? fmtQty(remain) : 'ครบ'} ${it.unit}</span>`;
+        return `<span class="po-mat-chip ${cls}">${poItemIsFg(it)?'<b style="color:#92400E;">FG</b> ':''}${poItemRef(it)?.name||'-'} · ${remain > 0 ? fmtQty(remain) : 'ครบ'} ${it.unit}</span>`;
       }).join('');
       const badge = po.status==='open'
         ? `<span class="pending-badge pending-open">ใหม่</span>`
@@ -447,7 +451,7 @@ window.selectPOById = async function(poId) {
   showLoading(true);
   const [poRes, itemsRes] = await Promise.all([
     db.from('purchase_orders').select('*,suppliers(id,code,name)').eq('id',poId).single(),
-    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
+    db.from('po_items').select('*,materials(sku,name),products(sku,name)').eq('po_id',poId),
   ]);
   showLoading(false);
   selectedPO = poRes.data;
@@ -481,7 +485,7 @@ function renderPOReceiveRows() {
       <div class="po-recv-header">
         <label class="po-recv-check">
           <input type="checkbox" class="pr-check" data-id="${it.id}" checked>
-          <span class="pr-matname"><b>${it.materials?.name||'-'}</b> <span class="lot-num">${it.materials?.sku||''}</span></span>
+          <span class="pr-matname">${poItemIsFg(it)?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}<b>${poItemRef(it)?.name||'-'}</b> <span class="lot-num">${poItemRef(it)?.sku||''}</span></span>
         </label>
         <span class="pr-remain">คงเหลือ <b>${fmtQty(remain)}</b> ${it.unit}</span>
       </div>
@@ -645,10 +649,13 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       if (!qty || qty <= 0) return;
       const poItem = selectedPOItems.find(p=>p.id===id);
       if (!poItem) return;
+      const isFg = poItemIsFg(poItem);
       cart.push({
-        material_id:  poItem.material_id,
-        sku:          poItem.materials?.sku||'',
-        name:         poItem.materials?.name||'',
+        material_id:  isFg ? null : poItem.material_id,
+        product_id:   isFg ? poItem.product_id : null,
+        is_fg:        isFg,
+        sku:          poItemRef(poItem)?.sku||'',
+        name:         poItemRef(poItem)?.name||'',
         unit:         poItem.unit,
         qty,
         supplier_lot: document.querySelector(`.pr-lot[data-id="${id}"]`)?.value.trim()||null,
@@ -682,8 +689,12 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       const qtyToStock = item.qty;
       let itemNote = item.note||null;
       let qtyOver = 0;
+      const matchPoItem = () => item._poItemId
+        ? selectedPOItems.find(p=>p.id===item._poItemId)
+        : selectedPOItems.find(p => item.is_fg ? p.product_id===item.product_id : p.material_id===item.material_id);
+
       if (selectedPO) {
-        const poItem = selectedPOItems.find(p=>p.material_id===item.material_id);
+        const poItem = matchPoItem();
         if (poItem) {
           const remain = poItem.qty_ordered - poItem.qty_received;
           if (item.qty > remain && remain > 0) {
@@ -697,7 +708,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       const { data: riData, error: riErr } = await db
         .from('receive_items')
         .insert({
-          ro_id: roData.id, material_id: item.material_id,
+          ro_id: roData.id, material_id: item.is_fg?null:item.material_id, product_id: item.is_fg?item.product_id:null,
           qty: qtyToStock, unit: item.unit, qty_over: qtyOver,
           supplier_lot: item.supplier_lot, mfg_date: item.mfg_date,
           exp_date: item.exp_date, note: itemNote,
@@ -705,28 +716,46 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         .select('id').single();
       if (riErr) throw riErr;
 
-      // สร้าง RM Lot (status = qc_pending)
-      const lotNumber = await generateLotNumber('RM');
-      const { data: lotData, error: lotErr } = await db
-        .from('rm_lots')
-        .insert({
-          lot_number: lotNumber, material_id: item.material_id,
-          ro_item_id: riData.id, supplier_id: supId,
-          supplier_lot: item.supplier_lot, receive_date: receiveDate,
-          exp_date: item.exp_date, initial_qty: qtyToStock,
-          unit: item.unit, status: 'qc_pending',
-        })
-        .select('id').single();
-      if (lotErr) throw lotErr;
+      if (item.is_fg) {
+        // สร้าง FG Lot (status = qc_pending) — สินค้าสำเร็จรูปที่ซื้อมาโดยตรง
+        const fgLotNumber = await generateLotNumber('FG');
+        const { data: fgLotData, error: fgLotErr } = await db
+          .from('fg_lots')
+          .insert({
+            lot_number: fgLotNumber, product_id: item.product_id,
+            ro_item_id: riData.id, supplier_id: supId,
+            supplier_lot: item.supplier_lot, produced_date: receiveDate, mfg_date: item.mfg_date,
+            exp_date: item.exp_date, initial_qty: qtyToStock,
+            unit: item.unit, status: 'qc_pending',
+            purchase_order_id: selectedPO?.id||null,
+          })
+          .select('id').single();
+        if (fgLotErr) throw fgLotErr;
 
-      const { error: stErr } = await db.from('rm_stock').insert({ lot_id: lotData.id, qty_on_hand: 0 });
-      if (stErr) throw stErr;
+        const { error: fgStErr } = await db.from('fg_stock').insert({ fg_lot_id: fgLotData.id, qty_on_hand: 0 });
+        if (fgStErr) throw fgStErr;
+      } else {
+        // สร้าง RM Lot (status = qc_pending)
+        const lotNumber = await generateLotNumber('RM');
+        const { data: lotData, error: lotErr } = await db
+          .from('rm_lots')
+          .insert({
+            lot_number: lotNumber, material_id: item.material_id,
+            ro_item_id: riData.id, supplier_id: supId,
+            supplier_lot: item.supplier_lot, receive_date: receiveDate,
+            exp_date: item.exp_date, initial_qty: qtyToStock,
+            unit: item.unit, status: 'qc_pending',
+          })
+          .select('id').single();
+        if (lotErr) throw lotErr;
+
+        const { error: stErr } = await db.from('rm_stock').insert({ lot_id: lotData.id, qty_on_hand: 0 });
+        if (stErr) throw stErr;
+      }
 
       // อัปเดต qty_received ใน po_items
       if (selectedPO) {
-        const poItem = item._poItemId
-          ? selectedPOItems.find(p=>p.id===item._poItemId)
-          : selectedPOItems.find(p=>p.material_id===item.material_id);
+        const poItem = matchPoItem();
         if (poItem) {
           // ตัดยอด PO ไม่เกินจำนวนสั่ง (ส่วนเกินเข้าสต็อกแล้วผ่าน qty)
           const newReceived = Math.min(poItem.qty_received + qtyToStock, poItem.qty_ordered);
@@ -777,7 +806,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 async function loadRecentRO() {
   const { data } = await db
     .from('receive_orders')
-    .select('id, ro_number, receive_date, operator, status, suppliers(name), receive_items(id, qty, unit, material_id, materials(sku,name))')
+    .select('id, ro_number, receive_date, operator, status, suppliers(name), receive_items(id, qty, unit, material_id, product_id, materials(sku,name), products(sku,name))')
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -786,28 +815,36 @@ async function loadRecentRO() {
   if (!data?.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
 
-  // ดึงเลข RM Lot ของแต่ละรายการ (ผ่าน receive_items -> rm_lots.ro_item_id)
+  // ดึงเลข Lot ของแต่ละรายการ (ผ่าน receive_items -> rm_lots/fg_lots.ro_item_id)
   const itemIds = data.flatMap(r => (r.receive_items||[]).map(i=>i.id));
   let lotsByItem = {};
   if (itemIds.length) {
-    const { data: lots } = await db.from('rm_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds);
-    (lots||[]).forEach(l => { lotsByItem[l.ro_item_id] = l.lot_number; });
+    const [{ data: rmLots }, { data: fgLots }] = await Promise.all([
+      db.from('rm_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds),
+      db.from('fg_lots').select('ro_item_id,lot_number').in('ro_item_id', itemIds),
+    ]);
+    (rmLots||[]).forEach(l => { lotsByItem[l.ro_item_id] = l.lot_number; });
+    (fgLots||[]).forEach(l => { lotsByItem[l.ro_item_id] = l.lot_number; });
   }
 
   body.innerHTML = data.map((r, ri) => {
     const items = r.receive_items?.length ? r.receive_items : [null];
     const statusBadge = `<span class="status-badge ${r.status==='confirmed'?'s-confirmed':'s-draft'}">${r.status==='confirmed'?'ยืนยันแล้ว':'ร่าง'}</span>`;
     const bg = ri % 2 === 0 ? 'var(--bg)' : 'var(--surface)';
-    return items.map((it, i) => `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;background:${bg};${i>0?'border-top:none;':''}" title="คลิกดูรายละเอียด">
+    return items.map((it, i) => {
+      const itemIsFg = it && !!it.product_id;
+      const itemRefRow = it ? (itemIsFg ? it.products : it.materials) : null;
+      return `<tr class="clickable-row" data-id="${r.id}" style="cursor:pointer;background:${bg};${i>0?'border-top:none;':''}" title="คลิกดูรายละเอียด">
       <td>${i===0?`<span class="lot-num">${r.ro_number}</span>`:''}</td>
       <td>${i===0?(r.suppliers?.name||'-'):''}</td>
       <td>${i===0?fmtDate(r.receive_date):''}</td>
       <td>${i===0?r.operator:''}</td>
-      <td>${it?.materials?.name?`${it.materials.name} <span style="font-size:11px;color:var(--ink-soft);">(${it.materials.sku})</span>`:'-'}</td>
+      <td>${itemRefRow?.name?`${itemIsFg?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}${itemRefRow.name} <span style="font-size:11px;color:var(--ink-soft);">(${itemRefRow.sku})</span>`:'-'}</td>
       <td>${it ? (lotsByItem[it.id]?`<span class="ro-lot-badge">${lotsByItem[it.id]}</span>`:'<span style="color:var(--ink-soft);font-size:12px;">-</span>') : '-'}</td>
       <td style="text-align:right;">${it?`${fmtQty(it.qty)} ${it.unit}`:'-'}</td>
       <td>${i===0?statusBadge:''}</td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
   }).join('');
 
   body.querySelectorAll('.clickable-row').forEach(row => {
@@ -828,23 +865,36 @@ async function openRODetail(roId) {
   const ro    = roRes.data;
   let   items = itemsRes.data||[];
 
-  // ดึง materials แยก (หลีกเลี่ยง nullable FK join issue)
+  // ดึง materials/products แยก (หลีกเลี่ยง nullable FK join issue)
   const matIds = [...new Set(items.map(i=>i.material_id).filter(Boolean))];
-  let matMap = {};
+  const prdIds = [...new Set(items.map(i=>i.product_id).filter(Boolean))];
+  let matMap = {}, prdMap = {};
   if (matIds.length) {
     const { data: mats } = await db.from('materials').select('id,sku,name').in('id',matIds);
     (mats||[]).forEach(m=>{ matMap[m.id]=m; });
   }
+  if (prdIds.length) {
+    const { data: prds } = await db.from('products').select('id,sku,name').in('id',prdIds);
+    (prds||[]).forEach(p=>{ prdMap[p.id]=p; });
+  }
 
-  // ดึง rm_lots ที่มาจากรายการนี้ เพื่อเช็คว่าผ่าน QC ไปแล้วหรือยัง (แก้ไขได้เฉพาะ qc_pending)
+  // ดึง rm_lots/fg_lots ที่มาจากรายการนี้ เพื่อเช็คว่าผ่าน QC ไปแล้วหรือยัง (แก้ไขได้เฉพาะ qc_pending)
   const itemIds = items.map(i=>i.id);
   let lotMap = {};
   if (itemIds.length) {
-    const { data: lots } = await db.from('rm_lots').select('id,ro_item_id,status').in('ro_item_id', itemIds);
-    (lots||[]).forEach(l => { lotMap[l.ro_item_id] = l; });
+    const [{ data: rmLots }, { data: fgLots }] = await Promise.all([
+      db.from('rm_lots').select('id,ro_item_id,status').in('ro_item_id', itemIds),
+      db.from('fg_lots').select('id,ro_item_id,status').in('ro_item_id', itemIds),
+    ]);
+    (rmLots||[]).forEach(l => { lotMap[l.ro_item_id] = l; });
+    (fgLots||[]).forEach(l => { lotMap[l.ro_item_id] = l; });
   }
 
-  items = items.map(i => ({ ...i, materials: matMap[i.material_id]||null, _lot: lotMap[i.id]||null }));
+  items = items.map(i => ({
+    ...i, is_fg: !!i.product_id,
+    materials: i.product_id ? prdMap[i.product_id]||null : matMap[i.material_id]||null,
+    _lot: lotMap[i.id]||null,
+  }));
   detailRO = ro; detailROItems = items;
 
   showLoading(false);
@@ -880,7 +930,7 @@ async function openRODetail(roId) {
       if (editable) {
         return `<tr data-item-id="${it.id}">
           <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
-          <td>${it.materials?.name||'-'}</td>
+          <td>${it.is_fg?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}${it.materials?.name||'-'}</td>
           <td style="text-align:right;"><input type="number" class="ro-edit-qty" step="0.01" min="0.01" value="${it.qty}" style="width:80px;text-align:right;"></td>
           <td>${it.unit}</td>
           <td><input type="text" class="ro-edit-lot" value="${it.supplier_lot||''}" style="width:90px;"></td>
@@ -891,7 +941,7 @@ async function openRODetail(roId) {
       }
       return `<tr data-item-id="${it.id}">
         <td><span class="lot-num">${it.materials?.sku||'-'}</span></td>
-        <td>${it.materials?.name||'-'}</td>
+        <td>${it.is_fg?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}${it.materials?.name||'-'}</td>
         <td style="text-align:right;font-weight:600;">${fmtQty(it.qty)}</td>
         <td>${it.unit}</td>
         <td>${it.supplier_lot||'-'}</td>
@@ -924,7 +974,9 @@ document.getElementById('roDetailSaveBtn').addEventListener('click', async () =>
 
       // ปรับ qty_received ของ PO (ถอนของเก่า ใส่ของใหม่ ไม่เกิน qty_ordered)
       if (detailRO.po_id) {
-        const { data: poItem } = await db.from('po_items').select('id,qty_ordered,qty_received').eq('po_id', detailRO.po_id).eq('material_id', item.material_id).single();
+        const poFilterCol = item.is_fg ? 'product_id' : 'material_id';
+        const poFilterVal = item.is_fg ? item.product_id : item.material_id;
+        const { data: poItem } = await db.from('po_items').select('id,qty_ordered,qty_received').eq('po_id', detailRO.po_id).eq(poFilterCol, poFilterVal).single();
         if (poItem) {
           const oldApplied = Math.min(item.qty, poItem.qty_ordered); // ประมาณจากยอดเดิม
           const newReceived = Math.min(Math.max(0, poItem.qty_received - oldApplied) + newQty, poItem.qty_ordered);
@@ -934,7 +986,8 @@ document.getElementById('roDetailSaveBtn').addEventListener('click', async () =>
 
       await db.from('receive_items').update({ qty: newQty, supplier_lot: newLot, mfg_date: newMfg, exp_date: newExp }).eq('id', itemId);
       if (item._lot) {
-        await db.from('rm_lots').update({ initial_qty: newQty, supplier_lot: newLot, exp_date: newExp }).eq('id', item._lot.id);
+        const lotTable = item.is_fg ? 'fg_lots' : 'rm_lots';
+        await db.from(lotTable).update({ initial_qty: newQty, supplier_lot: newLot, exp_date: newExp }).eq('id', item._lot.id);
       }
     }
     showToast('บันทึกการแก้ไขใบรับสำเร็จ');

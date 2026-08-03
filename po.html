@@ -89,12 +89,12 @@
 
   <!-- STEP 2: รายการสินค้า -->
   <div class="card">
-    <div class="card-title"><span class="step-badge">2</span> รายการวัตถุดิบที่สั่ง</div>
+    <div class="card-title"><span class="step-badge">2</span> รายการที่สั่ง</div>
     <div class="row">
       <div class="field-lg">
-        <label>วัตถุดิบ *</label>
+        <label>วัตถุดิบ / สินค้าสำเร็จรูป *</label>
         <div class="combo" id="matComboWrap">
-          <input type="text" id="matInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ..." autocomplete="off">
+          <input type="text" id="matInput" placeholder="พิมพ์ค้นหา SKU หรือชื่อ (RM หรือ FG)..." autocomplete="off">
           <div class="combo-list" id="matList"></div>
         </div>
         <input type="hidden" id="matId">
@@ -186,6 +186,9 @@
 <style>
 .filter-btn { border:1.5px solid var(--line);background:transparent;padding:6px 14px;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
 .filter-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
+.badge-type { display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;vertical-align:middle;margin-right:2px; }
+.badge-type.material { background:#E0F2E9;color:#0F5132; }
+.badge-type.product  { background:#FEF3C7;color:#92400E; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -195,7 +198,7 @@
 <script>
 (function(){
 
-let suppliers = [], materials = [];
+let suppliers = [], materials = [], products = [], orderableItems = [];
 let poCart = [];
 let matSelected = null;
 let allPOs = [];
@@ -213,12 +216,18 @@ document.getElementById('poDate').addEventListener('input', syncPoDateDisplay);
 
 
 async function loadMaster() {
-  const [supRes, matRes] = await Promise.all([
+  const [supRes, matRes, prdRes] = await Promise.all([
     db.from('suppliers').select('id,code,name').eq('is_active',true).order('code'),
     db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
+    db.from('products').select('id,sku,name,unit').eq('is_active',true).order('sku'),
   ]);
   suppliers = supRes.data || [];
   materials = matRes.data || [];
+  products  = prdRes.data || [];
+  orderableItems = [
+    ...materials.map(m => ({ ...m, item_type:'material' })),
+    ...products.map(p => ({ ...p, item_type:'product' })),
+  ];
 }
 
 // ===== COMBOS =====
@@ -234,8 +243,8 @@ setupCombo({
 setupCombo({
   inputEl: document.getElementById('matInput'),
   listEl:  document.getElementById('matList'),
-  getItems(q) { q=(q||'').toLowerCase(); return materials.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)).slice(0,40); },
-  renderItem: (m,i) => `<div class="combo-item" data-idx="${i}"><span><span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
+  getItems(q) { q=(q||'').toLowerCase(); return orderableItems.filter(m=>m.sku.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)).slice(0,40); },
+  renderItem: (m,i) => `<div class="combo-item" data-idx="${i}"><span><span class="badge-type ${m.item_type}">${m.item_type==='product'?'FG':'RM'}</span> <span class="lot-num">${m.sku}</span> ${m.name}</span><span style="color:var(--ink-soft);font-size:12px;">${m.unit}</span></div>`,
   onQueryChange() { matSelected=null; document.getElementById('matId').value=''; document.getElementById('itemUnit').value=''; },
   onSelect(m) {
     matSelected=m;
@@ -253,7 +262,7 @@ function renderCart() {
   if (!poCart.length) { body.innerHTML=''; empty.style.display='block'; checkSave(); return; }
   empty.style.display='none';
   body.innerHTML=poCart.map((it,i)=>`<tr>
-    <td><span class="lot-num">${it.sku}</span></td>
+    <td><span class="badge-type ${it.item_type}">${it.item_type==='product'?'FG':'RM'}</span> <span class="lot-num">${it.sku}</span></td>
     <td>${it.name}</td>
     <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
     <td>${it.unit}</td>
@@ -273,12 +282,12 @@ document.getElementById('addItemBtn').addEventListener('click', ()=>{
   if (!matSelected) { showToast('กรุณาเลือกวัตถุดิบ','error'); return; }
   const qty = parseFloat(document.getElementById('itemQty').value);
   if (!qty||qty<=0) { showToast('กรุณาระบุจำนวน','error'); return; }
-  const existing = poCart.find(x=>x.material_id===matSelected.id);
+  const existing = poCart.find(x=>x.item_id===matSelected.id && x.item_type===matSelected.item_type);
   if (existing) {
     existing.qty += qty;
     showToast(`รวมจำนวน ${matSelected.name} เป็น ${existing.qty} ${matSelected.unit}`);
   } else {
-    poCart.push({ material_id:matSelected.id, sku:matSelected.sku, name:matSelected.name, unit:matSelected.unit, qty });
+    poCart.push({ item_id:matSelected.id, item_type:matSelected.item_type, sku:matSelected.sku, name:matSelected.name, unit:matSelected.unit, qty });
   }
   renderCart();
   document.getElementById('matInput').value='';
@@ -327,7 +336,12 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
       poId = data.id;
     }
 
-    const items = poCart.map(it=>({ po_id:poId, material_id:it.material_id, qty_ordered:it.qty, qty_received:0, unit:it.unit }));
+    const items = poCart.map(it=>({
+      po_id:poId,
+      material_id: it.item_type==='material' ? it.item_id : null,
+      product_id:  it.item_type==='product'  ? it.item_id : null,
+      qty_ordered:it.qty, qty_received:0, unit:it.unit,
+    }));
     const { error: itemErr } = await db.from('po_items').insert(items);
     if (itemErr) throw itemErr;
 
@@ -383,7 +397,7 @@ window.openDetail = async function(poId) {
   showLoading(true);
   const [poRes, itemsRes] = await Promise.all([
     db.from('purchase_orders').select('*,suppliers(name)').eq('id',poId).single(),
-    db.from('po_items').select('*,materials(sku,name)').eq('po_id',poId),
+    db.from('po_items').select('*,materials(sku,name),products(sku,name)').eq('po_id',poId),
   ]);
   showLoading(false);
   const po = poRes.data;
@@ -401,8 +415,10 @@ window.openDetail = async function(poId) {
   document.getElementById('poDetailBody').innerHTML = items.map(it=>{
     const remain = it.qty_ordered - it.qty_received;
     const color = remain<=0 ? 'var(--green)' : remain<it.qty_ordered ? 'var(--amber)' : 'var(--ink-soft)';
+    const isFg = !!it.product_id;
+    const itemRef = isFg ? it.products : it.materials;
     return `<tr>
-      <td>${it.materials?.name||'-'} <span class="lot-num" style="font-size:11px;">${it.materials?.sku||''}</span></td>
+      <td><span class="badge-type ${isFg?'product':'material'}">${isFg?'FG':'RM'}</span> ${itemRef?.name||'-'} <span class="lot-num" style="font-size:11px;">${itemRef?.sku||''}</span></td>
       <td style="text-align:right;">${fmtQty(it.qty_ordered)}</td>
       <td style="text-align:right;font-weight:700;color:var(--green-deep);">${fmtQty(it.qty_received)}</td>
       <td style="text-align:right;font-weight:700;color:${color};">${fmtQty(Math.max(0,remain))}</td>
@@ -438,10 +454,15 @@ document.getElementById('editPOBtn').addEventListener('click', () => {
   document.getElementById('supInput').value = sup ? `${sup.code} — ${sup.name}` : '';
   document.getElementById('supId').value = po.supplier_id||'';
 
-  poCart = detailItems.map(it => ({
-    material_id: it.material_id, sku: it.materials?.sku||'', name: it.materials?.name||'',
-    unit: it.unit, qty: it.qty_ordered,
-  }));
+  poCart = detailItems.map(it => {
+    const isFg = !!it.product_id;
+    const itemRef = isFg ? it.products : it.materials;
+    return {
+      item_id: isFg ? it.product_id : it.material_id, item_type: isFg ? 'product' : 'material',
+      sku: itemRef?.sku||'', name: itemRef?.name||'',
+      unit: it.unit, qty: it.qty_ordered,
+    };
+  });
   renderCart();
 
   document.getElementById('savePOBtn').textContent = '✓ บันทึกการแก้ไข';

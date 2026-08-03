@@ -56,10 +56,10 @@
 
   <!-- รอ QC -->
   <div class="card">
-    <div class="card-title">รายการ RM Lot รอการตรวจสอบ</div>
+    <div class="card-title">รายการรอการตรวจสอบ (วัตถุดิบ + สินค้าสำเร็จรูปที่ซื้อมาโดยตรง)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>RM Lot</th><th>วัตถุดิบ</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>Supplier</th><th>Supplier Lot</th><th>วันรับ</th><th>EXP</th><th></th></tr></thead>
+        <thead><tr><th>Lot</th><th>ประเภท</th><th>วัตถุดิบ/สินค้า</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>Supplier</th><th>Supplier Lot</th><th>วันรับ</th><th>EXP</th><th></th></tr></thead>
         <tbody id="pendingBody"></tbody>
       </table>
     </div>
@@ -71,7 +71,7 @@
     <div class="card-title">ประวัติการตรวจสอบ (30 รายการล่าสุด)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>วันที่ตรวจ</th><th>RM Lot</th><th>วัตถุดิบ</th><th>ผล</th><th>อุณหภูมิ</th><th>ปัญหาที่พบ</th><th>สารเคมี</th><th>ผู้ตรวจ</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <thead><tr><th>วันที่ตรวจ</th><th>Lot</th><th>วัตถุดิบ/สินค้า</th><th>ผล</th><th>อุณหภูมิ</th><th>ปัญหาที่พบ</th><th>สารเคมี</th><th>ผู้ตรวจ</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="historyBody"></tbody>
       </table>
     </div>
@@ -91,6 +91,7 @@
     </div>
 
     <input type="hidden" id="qcLotId">
+    <input type="hidden" id="qcLotType">
 
     <div class="row" style="margin-bottom:12px;">
       <div class="field">
@@ -210,14 +211,20 @@ const CHEM_CLASS = { pending:'s-pending', passed:'s-available', failed:'s-on_hol
 
 // ===== LOAD =====
 async function loadData() {
-  const [lotsRes, oprRes] = await Promise.all([
+  const [rmRes, fgRes, oprRes] = await Promise.all([
     db.from('rm_lots')
       .select('id, lot_number, initial_qty, unit, receive_date, exp_date, supplier_lot, ro_item_id, materials(sku,name,requires_processing), suppliers(name)')
       .eq('status','qc_pending')
       .order('created_at'),
+    db.from('fg_lots')
+      .select('id, lot_number, initial_qty, unit, produced_date, exp_date, supplier_lot, ro_item_id, products(sku,name), suppliers(name)')
+      .eq('status','qc_pending')
+      .order('created_at'),
     db.from('operators').select('id,name').eq('is_active',true).order('name'),
   ]);
-  pendingLots = lotsRes.data || [];
+  const rmLots = (rmRes.data||[]).map(l => ({ ...l, _type:'rm', receive_date: l.receive_date, item_ref: l.materials }));
+  const fgLots = (fgRes.data||[]).map(l => ({ ...l, _type:'fg', receive_date: l.produced_date, item_ref: l.products }));
+  pendingLots = [...rmLots, ...fgLots];
   operators   = oprRes.data  || [];
   renderPending();
   await loadHistory();
@@ -230,14 +237,15 @@ function renderPending() {
   empty.style.display = 'none';
   body.innerHTML = pendingLots.map(l => `<tr>
     <td><span class="lot-num">${l.lot_number}</span></td>
-    <td>${l.materials?.name||'-'} <span style="font-size:11.5px;color:var(--ink-soft);">(${l.materials?.sku||''})</span></td>
+    <td>${l._type==='fg'?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span>':'<span class="badge-type material" style="background:#E0F2E9;color:#0F5132;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">RM</span>'}</td>
+    <td>${l.item_ref?.name||'-'} <span style="font-size:11.5px;color:var(--ink-soft);">(${l.item_ref?.sku||''})</span></td>
     <td style="text-align:right;">${fmtQty(l.initial_qty)}</td>
     <td>${l.unit}</td>
     <td>${l.suppliers?.name||'-'}</td>
     <td>${l.supplier_lot||'-'}</td>
     <td>${fmtDate(l.receive_date)}</td>
     <td>${l.exp_date ? fmtDate(l.exp_date) : '-'}</td>
-    <td><button class="btn btn-primary btn-sm" onclick="openQC('${l.id}')">ตรวจสอบ</button></td>
+    <td><button class="btn btn-primary btn-sm" onclick="openQC('${l.id}','${l._type}')">ตรวจสอบ</button></td>
   </tr>`).join('');
 }
 
@@ -246,7 +254,7 @@ let historyRecords = [];
 async function loadHistory() {
   const { data } = await db
     .from('qc_records')
-    .select('id, inspect_date, result, temp_actual, appearance, operator, note, checklist, chemical_status, chemical_note, rm_lots(lot_number, materials(name))')
+    .select('id, inspect_date, result, temp_actual, appearance, operator, note, checklist, chemical_status, chemical_note, rm_lot_id, fg_lot_id, rm_lots(lot_number, materials(name)), fg_lots(lot_number, products(name))')
     .order('created_at', { ascending: false })
     .limit(30);
 
@@ -262,10 +270,13 @@ async function loadHistory() {
   body.innerHTML = historyRecords.map(r => {
     const issues = Object.entries(r.checklist||{}).filter(([k,v])=>v===false).map(([k])=>QC_ISSUE_LABEL[k]||k);
     const chem = r.chemical_status || 'pending';
+    const isFg = !!r.fg_lot_id;
+    const lotNum = isFg ? r.fg_lots?.lot_number : r.rm_lots?.lot_number;
+    const itemName = isFg ? r.fg_lots?.products?.name : r.rm_lots?.materials?.name;
     return `<tr>
     <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.inspect_date)}</td>
-    <td><span class="lot-num">${r.rm_lots?.lot_number||'-'}</span></td>
-    <td>${r.rm_lots?.materials?.name||'-'}</td>
+    <td><span class="lot-num">${lotNum||'-'}</span></td>
+    <td>${isFg?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}${itemName||'-'}</td>
     <td><span class="status-badge ${resultClass[r.result]||''}">${resultLabel[r.result]||r.result}</span></td>
     <td>${r.temp_actual!=null ? r.temp_actual+'°C' : '-'}</td>
     <td>${issues.length ? issues.map(i=>`<span class="qc-issue-chip">${i}</span>`).join('') : '<span style="color:var(--ink-soft);font-size:12px;">-</span>'}</td>
@@ -289,10 +300,11 @@ setupCombo({
   onSelect(o) { document.getElementById('qcOprInput').value = o.name; }
 });
 
-function openQC(lotId) {
-  const lot = pendingLots.find(l => l.id === lotId);
+function openQC(lotId, lotType) {
+  const lot = pendingLots.find(l => l.id === lotId && l._type === lotType);
   document.getElementById('qcLotId').value    = lotId;
-  document.getElementById('qcLotTitle').textContent = `${lot.lot_number} — ${lot.materials?.name} ${fmtQty(lot.initial_qty)} ${lot.unit}`;
+  document.getElementById('qcLotType').value  = lotType;
+  document.getElementById('qcLotTitle').textContent = `${lotType==='fg'?'[FG] ':''}${lot.lot_number} — ${lot.item_ref?.name} ${fmtQty(lot.initial_qty)} ${lot.unit}`;
   document.getElementById('qcOprInput').value = '';
   document.getElementById('qcTemp').value     = '';
   document.getElementById('qcNote').value     = '';
@@ -308,12 +320,14 @@ document.getElementById('qcClose').addEventListener('click', () => {
 
 async function submitQC(result) {
   const lotId    = document.getElementById('qcLotId').value;
+  const lotType  = document.getElementById('qcLotType').value;
   const operator = document.getElementById('qcOprInput').value.trim();
   if (!operator) { showToast('กรุณาระบุผู้ตรวจสอบ', 'error'); return; }
 
   showLoading(true);
   try {
-    const lot = pendingLots.find(l => l.id === lotId);
+    const lot = pendingLots.find(l => l.id === lotId && l._type === lotType);
+    const isFg = lotType === 'fg';
 
     // รวบรวม checklist จาก checkbox
     const checklist = {};
@@ -326,7 +340,8 @@ async function submitQC(result) {
 
     // 1. บันทึก qc_record
     const { error: qcErr } = await db.from('qc_records').insert({
-      rm_lot_id:   lotId,
+      rm_lot_id:   isFg ? null : lotId,
+      fg_lot_id:   isFg ? lotId : null,
       ro_item_id:  lot.ro_item_id||null,
       operator,
       result,
@@ -341,30 +356,50 @@ async function submitQC(result) {
     });
     if (qcErr) throw qcErr;
 
-    // 2. อัปเดต rm_lots status + rm_stock
-    if (result === 'passed') {
-      // สินค้าซื้อมาขายไป (requires_processing=false) พร้อมจ่ายได้ทันที ไม่ต้องผ่านคัด/รีแพ็ค
-      const skipProcessing = lot.materials?.requires_processing === false;
-      const { error: lotErr } = await db.from('rm_lots').update({ status: 'available', is_processed: skipProcessing }).eq('id', lotId);
-      if (lotErr) throw lotErr;
-      // เติม stock
-      const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
-      if (stErr) throw stErr;
-      // บันทึก transaction
-      await db.from('rm_transactions').insert({
-        lot_id: lotId, txn_type: 'receive', qty: lot.initial_qty,
-        ref_type: 'qc_passed', operator,
-        note: 'QC ผ่าน — เข้า Stock',
-      });
-      showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว${skipProcessing?' (พร้อมจ่ายทันที)':''}`);
-
-    } else if (result === 'on_hold') {
-      await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);
-      showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
-
+    if (isFg) {
+      // ===== FG LOT (สินค้าสำเร็จรูปที่ซื้อมาโดยตรง) =====
+      if (result === 'passed') {
+        await db.from('fg_lots').update({ status: 'available' }).eq('id', lotId);
+        await db.from('fg_stock').update({ qty_on_hand: lot.initial_qty }).eq('fg_lot_id', lotId);
+        await db.from('fg_transactions').insert({
+          fg_lot_id: lotId, txn_type: 'produced', qty: lot.initial_qty,
+          ref_type: 'qc_passed', operator,
+          note: 'QC ผ่าน — เข้า Stock (ซื้อสำเร็จรูป)',
+        });
+        showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`);
+      } else if (result === 'on_hold') {
+        await db.from('fg_lots').update({ status: 'on_hold' }).eq('id', lotId);
+        showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
+      } else {
+        await db.from('fg_lots').update({ status: 'expired' }).eq('id', lotId);
+        showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
+      }
     } else {
-      await db.from('rm_lots').update({ status: 'expired' }).eq('id', lotId);
-      showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
+      // ===== RM LOT =====
+      if (result === 'passed') {
+        // สินค้าซื้อมาขายไป (requires_processing=false) พร้อมจ่ายได้ทันที ไม่ต้องผ่านคัด/รีแพ็ค
+        const skipProcessing = lot.materials?.requires_processing === false;
+        const { error: lotErr } = await db.from('rm_lots').update({ status: 'available', is_processed: skipProcessing }).eq('id', lotId);
+        if (lotErr) throw lotErr;
+        // เติม stock
+        const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
+        if (stErr) throw stErr;
+        // บันทึก transaction
+        await db.from('rm_transactions').insert({
+          lot_id: lotId, txn_type: 'receive', qty: lot.initial_qty,
+          ref_type: 'qc_passed', operator,
+          note: 'QC ผ่าน — เข้า Stock',
+        });
+        showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว${skipProcessing?' (พร้อมจ่ายทันที)':''}`);
+
+      } else if (result === 'on_hold') {
+        await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);
+        showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
+
+      } else {
+        await db.from('rm_lots').update({ status: 'expired' }).eq('id', lotId);
+        showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
+      }
     }
 
     document.getElementById('qcModal').classList.remove('show');
