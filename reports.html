@@ -58,6 +58,17 @@
         <label>วันที่สิ้นสุด</label>
         <input type="date" id="dateTo">
       </div>
+      <div class="field" style="min-width:210px;position:relative;">
+        <label>หมวดหมู่วัตถุดิบ/สินค้า</label>
+        <button type="button" class="cat-filter-btn" id="catFilterBtn">ทุกหมวดหมู่ ▾</button>
+        <div class="cat-filter-panel" id="catFilterPanel" style="display:none;">
+          <div id="catFilterList"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);">
+            <button type="button" class="btn btn-ghost btn-sm" id="catSelectAll" style="flex:1;">ทั้งหมด</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="catOnlyVeg" style="flex:1;">เฉพาะผัก/ผลไม้</button>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;padding-bottom:2px;">
         <button class="btn btn-ghost btn-sm" onclick="setRange(7)">7 วัน</button>
         <button class="btn btn-ghost btn-sm" onclick="setRange(30)">30 วัน</button>
@@ -259,6 +270,11 @@
 .tab-btn { border:1.5px solid var(--line);background:transparent;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s; }
 .tab-btn.active { background:var(--green-deep);color:#fff;border-color:var(--green-deep); }
 .tab-content { }
+.cat-filter-btn { width:100%;padding:9px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-family:inherit;font-size:14px;cursor:pointer;text-align:left;color:var(--ink); }
+.cat-filter-btn.filtered { border-color:var(--green-deep);color:var(--green-deep);font-weight:600; }
+.cat-filter-panel { position:absolute;top:100%;left:0;z-index:60;background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:10px;box-shadow:0 6px 20px rgba(0,0,0,.14);min-width:220px;margin-top:4px; }
+.cat-filter-panel label { display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 2px;cursor:pointer;font-weight:400;margin:0; }
+.cat-filter-panel input { width:16px;height:16px;accent-color:var(--green-deep);cursor:pointer; }
 .ledger-group-header td { background:var(--green-deep);color:#fff;font-weight:700;padding:8px 10px;font-size:13px; }
 .ledger-opening-row td { background:var(--surface);font-style:italic; }
 .rqc-card { border:1.5px solid var(--line);border-radius:10px;padding:14px;background:var(--bg); }
@@ -283,6 +299,68 @@
 
 let currentTab='receive';
 let reportData = {};  // cache ข้อมูลแต่ละ tab
+
+// ===== CATEGORY FILTER =====
+const CAT_LABEL = { veg:'ผัก/ผลไม้', fresh:'อาหารสด', dry:'ของแห้ง', spice:'เครื่องปรุง', drink:'เครื่องดื่ม', pack:'บรรจุภัณฑ์', processed:'อาหารแปรรูป', frozen:'แช่แข็ง', other:'อื่นๆ' };
+const CAT_STORAGE_KEY = 'erp_report_cats';
+let selectedCats = [];   // [] = ทุกหมวดหมู่ (ไม่กรอง)
+let catsDirty = false;
+
+// true ถ้าหมวดนี้ผ่านตัวกรอง — รายการที่ไม่รู้หมวด (null) จะถูกกรองออกเมื่อมีการเลือกหมวด
+function catOk(cat) {
+  if (!selectedCats.length) return true;
+  return selectedCats.includes(cat);
+}
+
+function renderCatFilter() {
+  document.getElementById('catFilterList').innerHTML = Object.entries(CAT_LABEL)
+    .map(([k,label]) => `<label><input type="checkbox" class="cat-check" value="${k}" ${selectedCats.includes(k)?'checked':''}> ${label}</label>`).join('');
+  document.querySelectorAll('.cat-check').forEach(cb => cb.addEventListener('change', () => {
+    selectedCats = [...document.querySelectorAll('.cat-check:checked')].map(c=>c.value);
+    updateCatBtn();
+    localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(selectedCats));
+    catsDirty = true;   // โหลดใหม่ตอนปิด panel (ไม่โหลดทุกครั้งที่ติ๊ก)
+  }));
+  updateCatBtn();
+}
+
+function updateCatBtn() {
+  const btn = document.getElementById('catFilterBtn');
+  if (!selectedCats.length) {
+    btn.textContent = 'ทุกหมวดหมู่ ▾';
+    btn.classList.remove('filtered');
+  } else if (selectedCats.length === 1) {
+    btn.textContent = `${CAT_LABEL[selectedCats[0]]} ▾`;
+    btn.classList.add('filtered');
+  } else {
+    btn.textContent = `เลือก ${selectedCats.length} หมวด ▾`;
+    btn.classList.add('filtered');
+  }
+}
+
+document.getElementById('catFilterBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  const panel = document.getElementById('catFilterPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('catFilterPanel').addEventListener('click', e => e.stopPropagation());
+document.addEventListener('click', () => {
+  const panel = document.getElementById('catFilterPanel');
+  const wasOpen = panel.style.display !== 'none';
+  panel.style.display='none';
+  if (wasOpen && catsDirty) { catsDirty = false; loadAll(); }
+});
+
+function applyCatPreset(cats) {
+  selectedCats = cats;
+  localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(selectedCats));
+  renderCatFilter();
+  catsDirty = false;   // โหลดเองแล้ว ไม่ต้องให้ตอนปิด panel โหลดซ้ำ
+  document.getElementById('catFilterPanel').style.display='none';
+  loadAll();
+}
+document.getElementById('catSelectAll').addEventListener('click', () => applyCatPreset([]));
+document.getElementById('catOnlyVeg').addEventListener('click', () => applyCatPreset(['veg']));
 
 // ===== DATE HELPERS =====
 function setRange(days) {
@@ -334,7 +412,7 @@ document.getElementById('loadBtn').addEventListener('click', loadAll);
 async function loadReceive(from, to) {
   const toDate = to.slice(0,10);
   const { data: ros } = await db.from('receive_orders')
-    .select('id,ro_number,receive_date,operator,suppliers(name),receive_items(id,material_id,qty,unit,supplier_lot,exp_date,materials(sku,name))')
+    .select('id,ro_number,receive_date,operator,suppliers(name),receive_items(id,material_id,qty,unit,supplier_lot,exp_date,materials(sku,name,category))')
     .gte('receive_date',from).lte('receive_date',toDate)
     .order('receive_date',{ascending:false});
 
@@ -349,6 +427,7 @@ async function loadReceive(from, to) {
   const rows = [];
   (ros||[]).forEach(r => {
     (r.receive_items||[]).forEach(it => {
+      if (!catOk(it.materials?.category)) return;
       rows.push({
         ro_number: r.ro_number, receive_date: r.receive_date, supplier: r.suppliers?.name||'-', operator: r.operator,
         sku: it.materials?.sku||'-', material_name: it.materials?.name||'-', lot_number: lotMap[it.id]||'-',
@@ -381,17 +460,23 @@ async function loadReceive(from, to) {
 async function loadPO(from, to) {
   const toDate = to.slice(0,10);
   const { data } = await db.from('purchase_orders')
-    .select('internal_ref,po_number,po_date,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name))')
+    .select('internal_ref,po_number,po_date,created_at,created_by,status,suppliers(name),po_items(qty_ordered,qty_received,unit,materials(sku,name,category))')
     .gte('po_date', from.slice(0,10)).lte('po_date', toDate)
     .order('po_date',{ascending:false});
-  reportData.po = data||[];
+
+  // กรองรายการในแต่ละ PO ตามหมวด แล้วตัด PO ที่ไม่เหลือรายการออก
+  const filtered = (data||[])
+    .map(p => ({ ...p, po_items: (p.po_items||[]).filter(i => catOk(i.materials?.category)) }))
+    .filter(p => p.po_items.length);
+
+  reportData.po = filtered;
   const body=document.getElementById('poRptBody');
   const empty=document.getElementById('poRptEmpty');
-  if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
+  if (!filtered.length){ body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
   const statusLabel = { open:'เปิด', partial:'รับบางส่วน', closed:'ปิดแล้ว' };
   const statusClass = { open:'s-confirmed', partial:'s-pending', closed:'s-completed' };
-  body.innerHTML=(data||[]).map(p=>{
+  body.innerHTML=filtered.map(p=>{
     const totalOrdered  = (p.po_items||[]).reduce((s,i)=>s+(i.qty_ordered||0),0);
     const totalReceived = (p.po_items||[]).reduce((s,i)=>s+(i.qty_received||0),0);
     const unit = p.po_items?.[0]?.unit||'';
@@ -413,7 +498,7 @@ async function loadPO(from, to) {
 async function loadProduction(from, to) {
   const [prodRes, rpRes] = await Promise.all([
     db.from('production_orders')
-      .select('id,po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct)')
+      .select('id,po_number,completed_at,operator,fg_lots(lot_number,products(name,sku,category),initial_qty,unit,yield_pct)')
       .gte('completed_at',from).lte('completed_at',to)
       .order('completed_at',{ascending:false}),
     db.from('repack_orders')
@@ -450,18 +535,23 @@ async function loadProduction(from, to) {
   const rpLotIds = [...new Set(rpData.flatMap(r=>(r.repack_inputs||[]).map(i=>i.lot_id)).filter(Boolean))];
   const rpLotMap = {};
   if (rpLotIds.length) {
-    const { data: lots } = await db.from('rm_lots').select('id,lot_number,materials(sku,name)').in('id',rpLotIds);
+    const { data: lots } = await db.from('rm_lots').select('id,lot_number,materials(sku,name,category)').in('id',rpLotIds);
     (lots||[]).forEach(l=>{ rpLotMap[l.id]=l; });
   }
 
+  // กรองตามหมวด: ผลิต FG ดูหมวดของสินค้า / คัด-รีแพ็ค ดูหมวดของวัตถุดิบที่ใช้
+  const prodFiltered = prodData.filter(r => (r.fg_lots||[]).some(fg => catOk(fg.products?.category)));
+  const rpFiltered   = rpData.filter(r => (r.repack_inputs||[]).some(i => catOk(rpLotMap[i.lot_id]?.materials?.category)));
+
   reportData.productionRows = [
-    ...prodData.map(r=>({ _type:'prod', ...r, inputs: inputMap[r.id]||[] })),
-    ...rpData.map(r=>({ _type:'repack', ...r })),
+    ...prodFiltered.map(r=>({ _type:'prod', ...r, inputs: inputMap[r.id]||[] })),
+    ...rpFiltered.map(r=>({ _type:'repack', ...r })),
   ];
   reportData.rpLotMap = rpLotMap;
 
   const body  = document.getElementById('productionBody');
   const empty = document.getElementById('productionEmpty');
+  if (!reportData.productionRows.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
 
   const yColor = yld => !yld ? 'var(--ink-soft)' : yld>=70 ? 'var(--green-deep)' : yld>=50 ? 'var(--amber)' : 'var(--red)';
@@ -513,12 +603,13 @@ async function loadProduction(from, to) {
 async function loadDispatch(from, to) {
   const toDate = to.slice(0,10);
   const { data } = await db.from('dispatch_orders')
-    .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lots(lot_number,unit,products(name,sku)))')
+    .select('do_number,dispatch_date,operator,customers(name),dispatch_items(qty,fg_lots(lot_number,unit,products(name,sku,category)))')
     .gte('dispatch_date',from).lte('dispatch_date',toDate)
     .order('dispatch_date',{ascending:false});
   const rows=[];
   (data||[]).forEach(doR=>{
     (doR.dispatch_items||[]).forEach(it=>{
+      if (!catOk(it.fg_lots?.products?.category)) return;
       rows.push({ do_number:doR.do_number, dispatch_date:doR.dispatch_date,
         customer:doR.customers?.name||'-', operator:doR.operator,
         fg_lot:it.fg_lots?.lot_number||'-', product:it.fg_lots?.products?.name||'-',
@@ -546,8 +637,8 @@ async function loadDispatch(from, to) {
 async function loadStock() {
   const [rmRes, fgRes, matRes] = await Promise.all([
     db.from('rm_lots').select('material_id,rm_stock(qty_on_hand)').eq('status','available'),
-    db.from('fg_lots').select('id,lot_number,produced_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name)').eq('status','available').order('produced_date',{ascending:true}),
-    db.from('materials').select('id,sku,name,unit,min_stock').eq('is_active',true),
+    db.from('fg_lots').select('id,lot_number,produced_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name,category)').eq('status','available').order('produced_date',{ascending:true}),
+    db.from('materials').select('id,sku,name,unit,min_stock,category').eq('is_active',true),
   ]);
 
   // RM summary
@@ -557,7 +648,7 @@ async function loadStock() {
     rmMap[l.material_id].count++;
     rmMap[l.material_id].total += l.rm_stock?.qty_on_hand||0;
   });
-  const stockRows=(matRes.data||[]).map(m=>({...m, count:rmMap[m.id]?.count||0, total:rmMap[m.id]?.total||0}));
+  const stockRows=(matRes.data||[]).filter(m=>catOk(m.category)).map(m=>({...m, count:rmMap[m.id]?.count||0, total:rmMap[m.id]?.total||0}));
   reportData.stock=stockRows;
   const body=document.getElementById('stockBody');
   const empty=document.getElementById('stockEmpty');
@@ -580,7 +671,7 @@ async function loadStock() {
   }
 
   // FG stock
-  const fgLots=fgRes.data||[];
+  const fgLots=(fgRes.data||[]).filter(l=>catOk(l.products?.category));
   reportData.fgstock=fgLots;
   const fgBody=document.getElementById('fgStockBody');
   const fgEmpty=document.getElementById('fgStockEmpty');
@@ -600,13 +691,14 @@ async function loadStock() {
 // ===== YIELD =====
 async function loadYield(from, to) {
   const { data } = await db.from('production_orders')
-    .select('po_number,completed_at,operator,fg_lots(lot_number,products(name,sku),initial_qty,unit,yield_pct,rm_qty_input)')
+    .select('po_number,completed_at,operator,fg_lots(lot_number,products(name,sku,category),initial_qty,unit,yield_pct,rm_qty_input)')
     .gte('completed_at', from).lte('completed_at', to)
     .order('completed_at', { ascending: false });
 
   const rows = [];
   (data||[]).forEach(r => {
     (r.fg_lots||[]).forEach(fg => {
+      if (!catOk(fg.products?.category)) return;
       if (fg.yield_pct != null) rows.push({
         po_number: r.po_number,
         completed_at: r.completed_at,
@@ -683,12 +775,12 @@ async function loadExpiry() {
   const now=new Date();
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()+30);
   const { data } = await db.from('rm_lots')
-    .select('lot_number,receive_date,exp_date,unit,rm_stock(qty_on_hand),materials(sku,name),suppliers(name)')
+    .select('lot_number,receive_date,exp_date,unit,rm_stock(qty_on_hand),materials(sku,name,category),suppliers(name)')
     .eq('status','available')
     .lte('exp_date', cutoff.toISOString().slice(0,10))
     .not('exp_date','is',null)
     .order('exp_date',{ascending:true});
-  const rows=(data||[]).filter(l=>l.rm_stock?.qty_on_hand>0);
+  const rows=(data||[]).filter(l=>l.rm_stock?.qty_on_hand>0 && catOk(l.materials?.category));
   reportData.expiry=rows;
   const body=document.getElementById('expiryBody');
   const empty=document.getElementById('expiryEmpty');
@@ -714,13 +806,14 @@ async function loadExpiry() {
 async function loadReceiveQC(from, to) {
   const toDate = to.slice(0,10);
   const { data: ros } = await db.from('receive_orders')
-    .select('ro_number,receive_date,operator,suppliers(name),receive_items(id,material_id,qty,unit,supplier_lot,exp_date,materials(sku,name))')
+    .select('ro_number,receive_date,operator,suppliers(name),receive_items(id,material_id,qty,unit,supplier_lot,exp_date,materials(sku,name,category))')
     .gte('receive_date',from).lte('receive_date',toDate)
     .order('receive_date',{ascending:false});
 
   const itemRows = [];
   (ros||[]).forEach(r => {
     (r.receive_items||[]).forEach(it => {
+      if (!catOk(it.materials?.category)) return;
       itemRows.push({ ro_number:r.ro_number, receive_date:r.receive_date, operator:r.operator, supplier:r.suppliers?.name||'-', item:it });
     });
   });
@@ -843,7 +936,7 @@ async function loadLedger(from, to) {
   const matIds = [...new Set(lots.map(l=>l.material_id).filter(Boolean))];
   let materials = [];
   if (matIds.length) {
-    const { data } = await db.from('materials').select('id,sku,name').in('id', matIds);
+    const { data } = await db.from('materials').select('id,sku,name,category').in('id', matIds);
     materials = data || [];
   }
   const matMap = Object.fromEntries(materials.map(m=>[m.id,m]));
@@ -871,8 +964,8 @@ async function loadLedger(from, to) {
         lot_number: t.lot_number,
       });
     });
-    return { sku: mat.sku, name: mat.name, opening, rows };
-  }).filter(g => g.rows.length).sort((a,b) => (a.sku||'').localeCompare(b.sku||''));
+    return { sku: mat.sku, name: mat.name, category: mat.category, opening, rows };
+  }).filter(g => g.rows.length && catOk(g.category)).sort((a,b) => (a.sku||'').localeCompare(b.sku||''));
 
   reportData.ledger = groups;
 
@@ -1015,11 +1108,16 @@ window.exportTab = function(tab) {
   const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'รายงาน');
-  XLSX.writeFile(wb,`${filename}_${document.getElementById('dateFrom').value||'all'}_${document.getElementById('dateTo').value||'all'}.xlsx`);
+  // ใส่ชื่อหมวดในไฟล์ เพื่อไม่ให้ไฟล์ที่กรองแล้วปนกับไฟล์รวมทุกหมวด
+  const catSuffix = selectedCats.length ? '_'+selectedCats.map(c=>CAT_LABEL[c]||c).join('-') : '';
+  XLSX.writeFile(wb,`${filename}${catSuffix}_${document.getElementById('dateFrom').value||'all'}_${document.getElementById('dateTo').value||'all'}.xlsx`);
 };
 
 // ===== INIT =====
 (async function init(){
+  try { selectedCats = JSON.parse(localStorage.getItem(CAT_STORAGE_KEY)) || []; } catch { selectedCats = []; }
+  if (!Array.isArray(selectedCats)) selectedCats = [];
+  renderCatFilter();
   setRange(30);
   await loadAll();
 })();
