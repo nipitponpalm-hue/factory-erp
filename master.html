@@ -777,9 +777,9 @@ const IMPORT_CONFIG = {
   materials: {
     title: 'วัตถุดิบ',
     fileId: 'imp-mat-file', nameId: 'imp-mat-name',
-    columns: ['sku','name','category','unit','min_stock','shelf_life_days'],
-    headers: ['SKU*','ชื่อวัตถุดิบ*','หมวดหมู่ (category)*','หน่วย*','Min Stock','อายุ (วัน)'],
-    sample:  [['RM-001','มะม่วงดิบ','veg','กก.','0','7']],
+    columns: ['sku','name','category','unit','min_stock','shelf_life_days','requires_processing'],
+    headers: ['SKU*','ชื่อวัตถุดิบ*','หมวดหมู่ (category)*','หน่วย*','Min Stock','อายุ (วัน)','ต้องคัด/รีแพ็คก่อนจ่าย (yes/no, ว่าง=yes)'],
+    sample:  [['RM-001','มะม่วงดิบ','veg','กก.','0','7','yes'],['RM-002','น้ำดื่มขวด (ซื้อมาขายไป)','drink','ขวด','0','180','no']],
     required: ['sku','name','category','unit'],
     table: 'materials', uniqueCol: 'sku',
   },
@@ -844,6 +844,10 @@ window.previewImport = function(type, input) {
       // type coerce
       if (obj.min_stock !== undefined) obj.min_stock = parseFloat(obj.min_stock) || 0;
       if (obj.shelf_life_days !== undefined) obj.shelf_life_days = parseInt(obj.shelf_life_days) || null;
+      if (obj.requires_processing !== undefined) {
+        const v = obj.requires_processing.toLowerCase().trim();
+        obj.requires_processing = !['no','false','0','n','ไม่','ไม่ใช่'].includes(v);
+      }
       obj.is_active = true;
       rows.push(obj);
     }
