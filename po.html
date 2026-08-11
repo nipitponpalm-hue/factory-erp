@@ -138,7 +138,7 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>เลขอ้างอิง</th><th>เลข PO (Express)</th><th>Supplier</th><th>ผู้สั่ง</th><th>วันที่ PO</th><th>รายการ</th><th>สถานะ</th><th></th></tr></thead>
+        <thead><tr><th>เลขอ้างอิง</th><th>เลข PO (Express)</th><th>Supplier</th><th>ผู้สั่ง</th><th>วันที่ PO</th><th>รายการ (คร่าวๆ)</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="poBody"></tbody>
       </table>
     </div>
@@ -189,6 +189,7 @@
 .badge-type { display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;vertical-align:middle;margin-right:2px; }
 .badge-type.material { background:#E0F2E9;color:#0F5132; }
 .badge-type.product  { background:#FEF3C7;color:#92400E; }
+.po-mat-chip { display:inline-block;font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 7px;margin:1px 3px 1px 0;white-space:nowrap; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -357,7 +358,7 @@ document.getElementById('savePOBtn').addEventListener('click', async ()=>{
 // ===== LOAD POs =====
 async function loadPOs() {
   const { data } = await db.from('purchase_orders')
-    .select('id,internal_ref,po_number,status,created_by,po_date,created_at,suppliers(name),po_items(id)')
+    .select('id,internal_ref,po_number,status,created_by,po_date,created_at,suppliers(name),po_items(id,qty_ordered,unit,materials(name),products(name))')
     .order('po_date',{ascending:false});
   allPOs = data||[];
   renderPOs();
@@ -370,16 +371,26 @@ function renderPOs() {
   if (!filtered.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
   const statusMap = { open:'<span class="status-badge s-available">รอรับ</span>', partial:'<span class="status-badge s-in_progress">รับบางส่วน</span>', closed:'<span class="status-badge s-depleted">ปิดแล้ว</span>' };
-  body.innerHTML=filtered.map(p=>`<tr>
+  body.innerHTML=filtered.map(p=>{
+    const items = p.po_items||[];
+    const MAX_SHOW = 3;
+    const chips = items.slice(0,MAX_SHOW).map(it=>{
+      const name = it.products?.name || it.materials?.name || '-';
+      return `<span class="po-mat-chip">${name} ${fmtQty(it.qty_ordered)} ${it.unit}</span>`;
+    }).join(' ');
+    const more = items.length > MAX_SHOW ? `<span style="font-size:11px;color:var(--ink-soft);">+${items.length-MAX_SHOW} รายการ</span>` : '';
+    const itemsSummary = items.length ? `${chips} ${more}` : '<span style="color:var(--ink-soft);font-size:12px;">ไม่มีรายการ</span>';
+    return `<tr>
     <td><span class="lot-num">${p.internal_ref}</span></td>
     <td>${p.po_number ? `<span style="font-weight:600;">${p.po_number}</span>` : '<span style="color:var(--ink-soft);font-size:12px;">ยังไม่มี</span>'}</td>
     <td>${p.suppliers?.name||'-'}</td>
     <td>${p.created_by||'-'}</td>
     <td>${fmtDate(p.po_date||p.created_at)}</td>
-    <td style="text-align:center;">${p.po_items?.length||0}</td>
+    <td>${itemsSummary}</td>
     <td>${statusMap[p.status]||p.status}</td>
     <td><button class="btn btn-ghost btn-sm" onclick="openDetail('${p.id}')">ดู</button></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 document.querySelectorAll('.filter-btn').forEach(btn=>{
