@@ -56,10 +56,13 @@
 
   <!-- รอ QC -->
   <div class="card">
-    <div class="card-title">รายการรอการตรวจสอบ (วัตถุดิบ + สินค้าสำเร็จรูปที่ซื้อมาโดยตรง)</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>รายการรอการตรวจสอบ (วัตถุดิบ + สินค้าสำเร็จรูปที่ซื้อมาโดยตรง)</span>
+      <button class="btn btn-primary btn-sm" id="bulkQcBtn" disabled>ตรวจพร้อมกัน (<span id="bulkQcCount">0</span>)</button>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Lot</th><th>ประเภท</th><th>วัตถุดิบ/สินค้า</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>Supplier</th><th>Supplier Lot</th><th>วันรับ</th><th>EXP</th><th></th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="pendingCheckAll"></th><th>Lot</th><th>ประเภท</th><th>วัตถุดิบ/สินค้า</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>Supplier</th><th>Supplier Lot</th><th>วันรับ</th><th>EXP</th><th></th></tr></thead>
         <tbody id="pendingBody"></tbody>
       </table>
     </div>
@@ -233,9 +236,10 @@ async function loadData() {
 function renderPending() {
   const body  = document.getElementById('pendingBody');
   const empty = document.getElementById('pendingEmpty');
-  if (!pendingLots.length) { body.innerHTML=''; empty.style.display='block'; return; }
+  if (!pendingLots.length) { body.innerHTML=''; empty.style.display='block'; updateBulkQcBtn(); return; }
   empty.style.display = 'none';
   body.innerHTML = pendingLots.map(l => `<tr>
+    <td><input type="checkbox" class="pending-check" data-id="${l.id}" data-type="${l._type}"></td>
     <td><span class="lot-num">${l.lot_number}</span></td>
     <td>${l._type==='fg'?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span>':'<span class="badge-type material" style="background:#E0F2E9;color:#0F5132;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">RM</span>'}</td>
     <td>${l.item_ref?.name||'-'} <span style="font-size:11.5px;color:var(--ink-soft);">(${l.item_ref?.sku||''})</span></td>
@@ -247,7 +251,22 @@ function renderPending() {
     <td>${l.exp_date ? fmtDate(l.exp_date) : '-'}</td>
     <td><button class="btn btn-primary btn-sm" onclick="openQC('${l.id}','${l._type}')">ตรวจสอบ</button></td>
   </tr>`).join('');
+
+  document.getElementById('pendingCheckAll').checked = false;
+  document.querySelectorAll('.pending-check').forEach(cb => cb.addEventListener('change', updateBulkQcBtn));
+  updateBulkQcBtn();
 }
+
+function updateBulkQcBtn() {
+  const n = document.querySelectorAll('.pending-check:checked').length;
+  document.getElementById('bulkQcCount').textContent = n;
+  document.getElementById('bulkQcBtn').disabled = n < 2;
+}
+
+document.getElementById('pendingCheckAll').addEventListener('change', function() {
+  document.querySelectorAll('.pending-check').forEach(cb => cb.checked = this.checked);
+  updateBulkQcBtn();
+});
 
 let historyRecords = [];
 
@@ -300,7 +319,10 @@ setupCombo({
   onSelect(o) { document.getElementById('qcOprInput').value = o.name; }
 });
 
+let qcBulkList = null; // [{id,type}] เมื่อกำลังตรวจหลายรายการพร้อมกัน
+
 function openQC(lotId, lotType) {
+  qcBulkList = null;
   const lot = pendingLots.find(l => l.id === lotId && l._type === lotType);
   document.getElementById('qcLotId').value    = lotId;
   document.getElementById('qcLotType').value  = lotType;
@@ -314,90 +336,117 @@ function openQC(lotId, lotType) {
   document.getElementById('qcModal').classList.add('show');
 }
 
+document.getElementById('bulkQcBtn').addEventListener('click', () => {
+  qcBulkList = [...document.querySelectorAll('.pending-check:checked')].map(cb => ({ id: cb.dataset.id, type: cb.dataset.type }));
+  if (qcBulkList.length < 2) return;
+  document.getElementById('qcLotId').value = '';
+  document.getElementById('qcLotType').value = '';
+  document.getElementById('qcLotTitle').textContent = `ตรวจพร้อมกัน ${qcBulkList.length} รายการ — ผลตรวจ/checklist เดียวกันจะถูกบันทึกให้ทุกรายการที่เลือก`;
+  document.getElementById('qcOprInput').value = '';
+  document.getElementById('qcTemp').value     = '';
+  document.getElementById('qcNote').value     = '';
+  document.querySelectorAll('.qc-check').forEach(cb => cb.checked = true);
+  document.getElementById('qcChemStatus').value = 'pending';
+  document.getElementById('qcChemNote').value   = '';
+  document.getElementById('qcModal').classList.add('show');
+});
+
 document.getElementById('qcClose').addEventListener('click', () => {
   document.getElementById('qcModal').classList.remove('show');
 });
 
+async function applyQcToLot(lotId, lotType, result, common) {
+  const lot = pendingLots.find(l => l.id === lotId && l._type === lotType);
+  if (!lot) return;
+  const isFg = lotType === 'fg';
+  const { operator, checklist, appearanceSummary, note, temp, chemStatus, chemNote } = common;
+
+  const { error: qcErr } = await db.from('qc_records').insert({
+    rm_lot_id:   isFg ? null : lotId,
+    fg_lot_id:   isFg ? lotId : null,
+    ro_item_id:  lot.ro_item_id||null,
+    operator,
+    result,
+    temp_actual: temp,
+    appearance:  appearanceSummary,
+    note,
+    checklist,
+    chemical_status: chemStatus,
+    chemical_note: chemNote,
+    chemical_checked_at: chemStatus !== 'pending' ? new Date().toISOString() : null,
+    chemical_checked_by: chemStatus !== 'pending' ? operator : null,
+  });
+  if (qcErr) throw qcErr;
+
+  if (isFg) {
+    // ===== FG LOT (สินค้าสำเร็จรูปที่ซื้อมาโดยตรง) =====
+    if (result === 'passed') {
+      await db.from('fg_lots').update({ status: 'available' }).eq('id', lotId);
+      await db.from('fg_stock').update({ qty_on_hand: lot.initial_qty }).eq('fg_lot_id', lotId);
+      await db.from('fg_transactions').insert({
+        fg_lot_id: lotId, txn_type: 'produced', qty: lot.initial_qty,
+        ref_type: 'qc_passed', operator,
+        note: 'QC ผ่าน — เข้า Stock (ซื้อสำเร็จรูป)',
+      });
+    } else if (result === 'on_hold') {
+      await db.from('fg_lots').update({ status: 'on_hold' }).eq('id', lotId);
+    } else {
+      await db.from('fg_lots').update({ status: 'expired' }).eq('id', lotId);
+    }
+  } else {
+    // ===== RM LOT =====
+    if (result === 'passed') {
+      const { error: lotErr } = await db.from('rm_lots').update({ status: 'available' }).eq('id', lotId);
+      if (lotErr) throw lotErr;
+      const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
+      if (stErr) throw stErr;
+      await db.from('rm_transactions').insert({
+        lot_id: lotId, txn_type: 'receive', qty: lot.initial_qty,
+        ref_type: 'qc_passed', operator,
+        note: 'QC ผ่าน — เข้า Stock',
+      });
+    } else if (result === 'on_hold') {
+      await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);
+    } else {
+      await db.from('rm_lots').update({ status: 'expired' }).eq('id', lotId);
+    }
+  }
+  return lot;
+}
+
 async function submitQC(result) {
-  const lotId    = document.getElementById('qcLotId').value;
-  const lotType  = document.getElementById('qcLotType').value;
   const operator = document.getElementById('qcOprInput').value.trim();
   if (!operator) { showToast('กรุณาระบุผู้ตรวจสอบ', 'error'); return; }
 
   showLoading(true);
   try {
-    const lot = pendingLots.find(l => l.id === lotId && l._type === lotType);
-    const isFg = lotType === 'fg';
-
-    // รวบรวม checklist จาก checkbox
+    // รวบรวม checklist จาก checkbox (ใช้ร่วมกันทุก lot ถ้าเป็นการตรวจพร้อมกัน)
     const checklist = {};
     document.querySelectorAll('.qc-check').forEach(cb => { checklist[cb.dataset.key] = cb.checked; });
     const issues = Object.entries(checklist).filter(([k,v])=>v===false).map(([k])=>QC_ISSUE_LABEL[k]||k);
     const appearanceSummary = issues.length ? `พบปัญหา: ${issues.join(', ')}` : 'ปกติทุกรายการ';
 
-    const chemStatus = document.getElementById('qcChemStatus').value;
-    const chemNote    = document.getElementById('qcChemNote').value.trim()||null;
+    const common = {
+      operator, checklist, appearanceSummary,
+      note: document.getElementById('qcNote').value.trim()||null,
+      temp: parseFloat(document.getElementById('qcTemp').value)||null,
+      chemStatus: document.getElementById('qcChemStatus').value,
+      chemNote: document.getElementById('qcChemNote').value.trim()||null,
+    };
 
-    // 1. บันทึก qc_record
-    const { error: qcErr } = await db.from('qc_records').insert({
-      rm_lot_id:   isFg ? null : lotId,
-      fg_lot_id:   isFg ? lotId : null,
-      ro_item_id:  lot.ro_item_id||null,
-      operator,
-      result,
-      temp_actual: parseFloat(document.getElementById('qcTemp').value)||null,
-      appearance:  appearanceSummary,
-      note:        document.getElementById('qcNote').value.trim()||null,
-      checklist,
-      chemical_status: chemStatus,
-      chemical_note: chemNote,
-      chemical_checked_at: chemStatus !== 'pending' ? new Date().toISOString() : null,
-      chemical_checked_by: chemStatus !== 'pending' ? operator : null,
-    });
-    if (qcErr) throw qcErr;
+    const resultLabel = { passed:'✅ ผ่าน QC', failed:'❌ ไม่ผ่าน QC', on_hold:'⏸ พักไว้' };
 
-    if (isFg) {
-      // ===== FG LOT (สินค้าสำเร็จรูปที่ซื้อมาโดยตรง) =====
-      if (result === 'passed') {
-        await db.from('fg_lots').update({ status: 'available' }).eq('id', lotId);
-        await db.from('fg_stock').update({ qty_on_hand: lot.initial_qty }).eq('fg_lot_id', lotId);
-        await db.from('fg_transactions').insert({
-          fg_lot_id: lotId, txn_type: 'produced', qty: lot.initial_qty,
-          ref_type: 'qc_passed', operator,
-          note: 'QC ผ่าน — เข้า Stock (ซื้อสำเร็จรูป)',
-        });
-        showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`);
-      } else if (result === 'on_hold') {
-        await db.from('fg_lots').update({ status: 'on_hold' }).eq('id', lotId);
-        showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
-      } else {
-        await db.from('fg_lots').update({ status: 'expired' }).eq('id', lotId);
-        showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
+    if (qcBulkList && qcBulkList.length) {
+      for (const item of qcBulkList) {
+        await applyQcToLot(item.id, item.type, result, common);
       }
+      showToast(`${resultLabel[result]} — บันทึกให้ ${qcBulkList.length} รายการเรียบร้อย`);
+      qcBulkList = null;
     } else {
-      // ===== RM LOT =====
-      if (result === 'passed') {
-        const { error: lotErr } = await db.from('rm_lots').update({ status: 'available' }).eq('id', lotId);
-        if (lotErr) throw lotErr;
-        // เติม stock
-        const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: lot.initial_qty, updated_at: new Date().toISOString() }).eq('lot_id', lotId);
-        if (stErr) throw stErr;
-        // บันทึก transaction
-        await db.from('rm_transactions').insert({
-          lot_id: lotId, txn_type: 'receive', qty: lot.initial_qty,
-          ref_type: 'qc_passed', operator,
-          note: 'QC ผ่าน — เข้า Stock',
-        });
-        showToast(`✅ ${lot.lot_number} ผ่าน QC — เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`);
-
-      } else if (result === 'on_hold') {
-        await db.from('rm_lots').update({ status: 'on_hold' }).eq('id', lotId);
-        showToast(`⏸ ${lot.lot_number} พักไว้ก่อน`);
-
-      } else {
-        await db.from('rm_lots').update({ status: 'expired' }).eq('id', lotId);
-        showToast(`❌ ${lot.lot_number} ไม่ผ่าน QC — ตีคืน Supplier`, 'error');
-      }
+      const lotId   = document.getElementById('qcLotId').value;
+      const lotType = document.getElementById('qcLotType').value;
+      const lot = await applyQcToLot(lotId, lotType, result, common);
+      showToast(`${resultLabel[result]} — ${lot?.lot_number||''} ${result==='passed'?`เข้า Stock ${fmtQty(lot.initial_qty)} ${lot.unit} แล้ว`:''}`);
     }
 
     document.getElementById('qcModal').classList.remove('show');
