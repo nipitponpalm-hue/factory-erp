@@ -185,6 +185,32 @@ document.getElementById('bwSearchBtn').addEventListener('click', async ()=>{
   document.getElementById('noResult').style.display='block';
 });
 
+// ===== ORIGIN: เช็คว่า Lot นี้เป็นผลผลิตจากการคัด/รีแพ็ค หรือรับเข้าตรงๆ =====
+async function getLotOrigin(lotId) {
+  const { data: out } = await db.from('repack_outputs')
+    .select('rp_id,grade,repack_orders(rp_number,repack_date,operator)')
+    .eq('new_lot_id', lotId).limit(1);
+  if (!out?.length) return null;
+  const o = out[0];
+  const { data: srcInputs } = await db.from('repack_inputs')
+    .select('qty_used,rm_lots(lot_number)')
+    .eq('rp_id', o.rp_id);
+  return {
+    rpNumber: o.repack_orders?.rp_number, repackDate: o.repack_orders?.repack_date, operator: o.repack_orders?.operator,
+    grade: o.grade,
+    sources: (srcInputs||[]).map(s => ({ lot_number: s.rm_lots?.lot_number, qty: s.qty_used })),
+  };
+}
+
+function originNoteHtml(origin) {
+  if (!origin) return `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">📋 รับเข้าโดยตรง — ไม่ผ่านคัด/รีแพ็ค</div>`;
+  const srcTxt = origin.sources.map(s=>`${s.lot_number||'-'} (${fmtQty(s.qty)})`).join(', ');
+  return `<div style="font-size:11.5px;color:#92400E;background:#FEF3C7;padding:4px 8px;border-radius:5px;margin-top:4px;">
+    ✂️ ผ่านคัด/รีแพ็ค: <b>${origin.rpNumber||'-'}</b> โดย ${origin.operator||'-'} (${origin.repackDate?fmtDate(origin.repackDate):'-'})${origin.grade?` — เกรด <b>${origin.grade}</b>`:''}<br>
+    จาก Lot ต้นทาง: ${srcTxt||'-'}
+  </div>`;
+}
+
 // ===== BACKWARD: FG Lot → RM Lots → Suppliers =====
 async function traceBackwardFromFG(fgLotId) {
   showLoading(true);
@@ -203,9 +229,14 @@ async function traceBackwardFromFG(fgLotId) {
     let rmInputs=[];
     if (po?.po_id) {
       const { data:inp } = await db.from('production_inputs')
-        .select('qty_used,rm_lots(lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number)))')
+        .select('qty_used,rm_lots(id,lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number)))')
         .eq('po_id',po.po_id);
       rmInputs = inp||[];
+    }
+
+    // เช็คว่าแต่ละ RM lot ที่ใช้ผลิต มาจากการคัด/รีแพ็คหรือไม่
+    for (const r of rmInputs) {
+      if (r.rm_lots?.id) r._origin = await getLotOrigin(r.rm_lots.id);
     }
 
     renderBackwardFG(fg, rmInputs, dis||[]);
@@ -235,6 +266,7 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
             ${lot?.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(lot.exp_date)}`:''}<br>
             จำนวนที่ใช้: <b>${fmtQty(r.qty_used)} ${lot?.unit||''}</b>
           </div>
+          ${originNoteHtml(r._origin)}
         </div>
       </div>`;
     });
@@ -372,6 +404,7 @@ window.traceRMDirect = async function(rmLotId) {
     .eq('id',rmLotId).single();
   if (!rm) { showLoading(false); return; }
   const ro = rm.receive_items?.[0]?.receive_orders;
+  const origin = await getLotOrigin(rmLotId);
   document.getElementById('resultTitle').textContent=`Backward Trace — RM Lot: ${rm.lot_number}`;
   document.getElementById('traceChain').innerHTML=`
     <div class="trace-node rm">
@@ -382,8 +415,9 @@ window.traceRMDirect = async function(rmLotId) {
           วัตถุดิบ: ${rm.materials?.name||'-'} (${rm.materials?.sku||'-'})<br>
           Supplier: <b>${rm.suppliers?.name||'-'}</b>${ro?` &nbsp;|&nbsp; ใบรับ: ${ro.ro_number}`:''}<br>
           วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'}${rm.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
-          จำนวนทั้งหมด: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; <b style="color:var(--green-deep);">จ่ายตรงให้ลูกค้า (ไม่ผ่านการแปรรูป)</b>
+          จำนวนทั้งหมด: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; <b style="color:var(--green-deep);">จ่ายตรงให้ลูกค้า</b>
         </div>
+        ${originNoteHtml(origin)}
       </div>
     </div>`;
   document.getElementById('resultWrap').style.display='block';
@@ -429,24 +463,124 @@ document.getElementById('fwSearchBtn').addEventListener('click', async()=>{
   showLoading(false);
 });
 
-// ===== FORWARD: RM → PO → FG → DO =====
+// ===== FORWARD: RM → (คัด/รีแพ็ค)* → PO ผลิต → FG → DO, หรือจ่ายตรง =====
 async function traceForwardFromRM(rmLotId) {
   showLoading(true);
   try {
     const { data:rm } = await db.from('rm_lots')
       .select('lot_number,receive_date,exp_date,initial_qty,unit,status,materials(sku,name),suppliers(name),receive_items(receive_orders(ro_number,receive_date))')
       .eq('id',rmLotId).single();
-
-    // production inputs ที่ใช้ lot นี้
-    const { data:inputs } = await db.from('production_inputs')
-      .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),produced_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
-      .eq('lot_id',rmLotId);
-
-    renderForwardRM(rm, inputs||[]);
+    const origin = await getLotOrigin(rmLotId);
+    const branches = await buildForwardBranches(rmLotId, rm.unit, 0);
+    renderForwardRM(rm, origin, branches);
   } finally { showLoading(false); }
 }
 
-function renderForwardRM(rm, inputs) {
+// สร้าง HTML ของทุกสิ่งที่เกิดขึ้น "ต่อจาก" lot นี้ — จ่ายตรง / ผลิตเป็น FG / คัด-รีแพ็ค (วนซ้ำได้หลายชั้น)
+async function buildForwardBranches(lotId, unit, depth) {
+  if (depth > 6) return `<div style="font-size:12px;color:var(--red);padding:6px 0;">(หยุดการติดตาม — ลึกเกินไป)</div>`;
+  let html = '';
+
+  // 1) จ่ายตรง (ไม่แปรรูป)
+  const { data: directDispatch } = await db.from('dispatch_items')
+    .select('qty,dispatch_orders(do_number,dispatch_date,customers(name))')
+    .eq('rm_lot_id', lotId);
+  (directDispatch||[]).forEach(d=>{
+    html += `<div class="trace-arrow">↓</div>`;
+    html += `<div class="trace-node do">
+      <div class="trace-node-icon">🟧</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${d.dispatch_orders?.do_number||'-'}</div>
+        <div class="trace-node-sub">ลูกค้า: <b>${d.dispatch_orders?.customers?.name||'-'}</b><br>วันจ่าย: ${d.dispatch_orders?.dispatch_date?fmtDT(d.dispatch_orders.dispatch_date):'-'} &nbsp;|&nbsp; จำนวน: <b>${fmtQty(d.qty)} ${unit}</b> &nbsp;|&nbsp; <span style="color:var(--green-deep);">จ่ายตรง</span></div>
+      </div>
+    </div>`;
+  });
+
+  // 2) เอาไปผลิตเป็น FG
+  const { data:inputs } = await db.from('production_inputs')
+    .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),produced_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
+    .eq('lot_id',lotId);
+  (inputs||[]).forEach(inp=>{
+    const po=inp.production_orders;
+    const fgLots=po?.fg_lots||[];
+    html+=`<div class="trace-arrow">↓</div>`;
+    html+=`<div class="trace-node" style="border-left-color:#8B5CF6;">
+      <div class="trace-node-icon">⚙️</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${po?.po_number||'-'}</div>
+        <div class="trace-node-sub">ผลิตโดย: ${po?.operator||'-'} &nbsp;|&nbsp; วันผลิต: ${po?.production_date?fmtDT(po.production_date):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(inp.qty_used)} ${unit}</b></div>
+      </div>
+    </div>`;
+    fgLots.forEach(fg=>{
+      const dispatches=fg.dispatch_items||[];
+      html+=`<div class="trace-arrow">↓</div>`;
+      html+=`<div class="trace-node fg">
+        <div class="trace-node-icon">🟩</div>
+        <div class="trace-node-body">
+          <div class="trace-node-lot">${fg.lot_number}</div>
+          <div class="trace-node-sub">
+            สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
+            MFG: ${fg.produced_date?fmtDate(fg.produced_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
+            จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b>
+          </div>
+        </div>
+      </div>`;
+      if (dispatches.length) {
+        dispatches.forEach(d=>{
+          html+=`<div class="trace-arrow">↓</div>`;
+          html+=`<div class="trace-node do">
+            <div class="trace-node-icon">🟧</div>
+            <div class="trace-node-body">
+              <div class="trace-node-lot">${d.dispatch_orders?.do_number||'-'}</div>
+              <div class="trace-node-sub">ลูกค้า: <b>${d.dispatch_orders?.customers?.name||'-'}</b><br>วันจ่าย: ${d.dispatch_orders?.dispatch_date?fmtDT(d.dispatch_orders.dispatch_date):'-'} &nbsp;|&nbsp; จำนวน: <b>${fmtQty(d.qty)} ${fg.unit}</b></div>
+            </div>
+          </div>`;
+        });
+      } else {
+        html+=`<div style="font-size:13px;color:var(--ink-soft);padding:6px 0 6px 24px;">ยังไม่มีการจ่ายสินค้า FG Lot นี้</div>`;
+      }
+    });
+  });
+
+  // 3) เอาไปคัด/รีแพ็ค (ผลลัพธ์เป็น RM lot ใหม่ SKU เดิม — วนต่อไปได้อีก)
+  const { data: repackUses } = await db.from('repack_inputs')
+    .select('qty_used,rp_id,repack_orders(rp_number,repack_date,operator)')
+    .eq('lot_id', lotId);
+  for (const ru of (repackUses||[])) {
+    html += `<div class="trace-arrow">↓</div>`;
+    html += `<div class="trace-node" style="border-left-color:#F59E0B;">
+      <div class="trace-node-icon">✂️</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${ru.repack_orders?.rp_number||'-'}</div>
+        <div class="trace-node-sub">คัด/รีแพ็คโดย: ${ru.repack_orders?.operator||'-'} &nbsp;|&nbsp; วันที่: ${ru.repack_orders?.repack_date?fmtDate(ru.repack_orders.repack_date):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(ru.qty_used)} ${unit}</b></div>
+      </div>
+    </div>`;
+
+    const { data: outputs } = await db.from('repack_outputs')
+      .select('qty_output,unit,grade,new_lot_id,rm_lots(lot_number,status)')
+      .eq('rp_id', ru.rp_id);
+
+    for (const out of (outputs||[])) {
+      html += `<div class="trace-arrow">↓</div>`;
+      html += `<div class="trace-node rm">
+        <div class="trace-node-icon">🟦</div>
+        <div class="trace-node-body">
+          <div class="trace-node-lot">${out.rm_lots?.lot_number||'-'} ${out.grade?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;">เกรด ${out.grade}</span>`:''}</div>
+          <div class="trace-node-sub">ผลผลิตจากการคัด/รีแพ็ค &nbsp;|&nbsp; จำนวน: <b>${fmtQty(out.qty_output)} ${out.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${out.rm_lots?.status}" style="font-size:11px;">${out.rm_lots?.status||'-'}</span></div>
+        </div>
+      </div>`;
+      if (out.new_lot_id) {
+        const sub = await buildForwardBranches(out.new_lot_id, out.unit, depth+1);
+        if (sub) { html += sub; }
+        else { html += `<div style="font-size:13px;color:var(--ink-soft);padding:6px 0 6px 24px;">ยังไม่มีการนำไปใช้ต่อ</div>`; }
+      }
+    }
+  }
+
+  return html;
+}
+
+function renderForwardRM(rm, origin, branchesHtml) {
   document.getElementById('resultTitle').textContent=`Forward Trace — RM Lot: ${rm.lot_number}`;
   const ro=rm.receive_items?.[0]?.receive_orders;
   let html=``;
@@ -462,54 +596,11 @@ function renderForwardRM(rm, inputs) {
         วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'} ${rm.exp_date?`&nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
         จำนวน: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${rm.status}" style="font-size:11px;">${rm.status}</span>
       </div>
+      ${originNoteHtml(origin)}
     </div>
   </div>`;
 
-  if (!inputs.length) {
-    html+=`<div style="font-size:13px;color:var(--ink-soft);padding:10px 0;">ยังไม่มีการนำไปผลิต</div>`;
-  } else {
-    inputs.forEach(inp=>{
-      const po=inp.production_orders;
-      const fgLots=po?.fg_lots||[];
-      html+=`<div class="trace-arrow">↓</div>`;
-      html+=`<div class="trace-node" style="border-left-color:#8B5CF6;">
-        <div class="trace-node-icon">⚙️</div>
-        <div class="trace-node-body">
-          <div class="trace-node-lot">${po?.po_number||'-'}</div>
-          <div class="trace-node-sub">ผลิตโดย: ${po?.operator||'-'} &nbsp;|&nbsp; วันผลิต: ${po?.production_date?fmtDT(po.production_date):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(inp.qty_used)} ${rm.unit}</b></div>
-        </div>
-      </div>`;
-      fgLots.forEach(fg=>{
-        const dispatches=fg.dispatch_items||[];
-        html+=`<div class="trace-arrow">↓</div>`;
-        html+=`<div class="trace-node fg">
-          <div class="trace-node-icon">🟩</div>
-          <div class="trace-node-body">
-            <div class="trace-node-lot">${fg.lot_number}</div>
-            <div class="trace-node-sub">
-              สินค้า: ${fg.products?.name||'-'} (${fg.products?.sku||'-'})<br>
-              MFG: ${fg.produced_date?fmtDate(fg.produced_date):'-'} &nbsp;|&nbsp; EXP: ${fg.exp_date?fmtDate(fg.exp_date):'-'}<br>
-              จำนวน: <b>${fmtQty(fg.initial_qty)} ${fg.unit}</b>
-            </div>
-          </div>
-        </div>`;
-        if (dispatches.length) {
-          dispatches.forEach(d=>{
-            html+=`<div class="trace-arrow">↓</div>`;
-            html+=`<div class="trace-node do">
-              <div class="trace-node-icon">🟧</div>
-              <div class="trace-node-body">
-                <div class="trace-node-lot">${d.dispatch_orders?.do_number||'-'}</div>
-                <div class="trace-node-sub">ลูกค้า: <b>${d.dispatch_orders?.customers?.name||'-'}</b><br>วันจ่าย: ${d.dispatch_orders?.dispatch_date?fmtDT(d.dispatch_orders.dispatch_date):'-'} &nbsp;|&nbsp; จำนวน: <b>${fmtQty(d.qty)} ${fg.unit}</b></div>
-              </div>
-            </div>`;
-          });
-        } else {
-          html+=`<div style="font-size:13px;color:var(--ink-soft);padding:6px 0 6px 24px;">ยังไม่มีการจ่ายสินค้า FG Lot นี้</div>`;
-        }
-      });
-    });
-  }
+  html += branchesHtml || `<div style="font-size:13px;color:var(--ink-soft);padding:10px 0;">ยังไม่มีการนำไปใช้ต่อ (ยังไม่ผลิต / ยังไม่คัด / ยังไม่จ่าย)</div>`;
 
   document.getElementById('traceChain').innerHTML=html;
   document.getElementById('resultWrap').style.display='block';
