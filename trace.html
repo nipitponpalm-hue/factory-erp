@@ -224,12 +224,12 @@ async function traceBackwardFromFG(fgLotId) {
       .select('qty,dispatch_orders(do_number,dispatch_date,customers(name))')
       .eq('fg_lot_id',fgLotId);
 
-    // RM inputs ที่ใช้ผลิต
+    // Inputs ที่ใช้ผลิต — อาจเป็น RM lot หรือ FG lot อื่นที่เอามาผลิตต่อ (เช่น แบ่งบรรจุ)
     const { data:po } = await db.from('fg_lots').select('po_id').eq('id',fgLotId).single();
     let rmInputs=[];
     if (po?.po_id) {
       const { data:inp } = await db.from('production_inputs')
-        .select('qty_used,rm_lots(id,lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number)))')
+        .select('qty_used,rm_lots(id,lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number))),fg_lots(id,lot_number,produced_date,exp_date,unit,products(sku,name))')
         .eq('po_id',po.po_id);
       rmInputs = inp||[];
     }
@@ -248,10 +248,25 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
 
   let html = '';
 
-  // RM Nodes
+  // Input Nodes (RM lot หรือ FG lot ที่เอามาผลิตต่อ)
   if (rmInputs.length) {
-    html += `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">📦 วัตถุดิบที่ใช้ผลิต</div>`;
+    html += `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">📦 วัตถุดิบ/สินค้าที่ใช้ผลิต</div>`;
     rmInputs.forEach(r=>{
+      if (r.fg_lots) {
+        const flot = r.fg_lots;
+        html+=`<div class="trace-node fg" style="cursor:pointer;" onclick="traceFGFromDO('${flot.id}')">
+          <div class="trace-node-icon">🟩</div>
+          <div class="trace-node-body">
+            <div class="trace-node-lot">${flot.lot_number||'-'} <span style="font-size:11px;color:var(--green-deep);">→ คลิกเพื่อ Trace ย้อนหลังต่อ</span></div>
+            <div class="trace-node-sub">
+              สินค้า (FG ที่ผลิตไว้ก่อน): ${flot.products?.name||'-'} (${flot.products?.sku||'-'})<br>
+              ผลิตวันที่: ${flot.produced_date?fmtDate(flot.produced_date):'-'} ${flot.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(flot.exp_date)}`:''}<br>
+              จำนวนที่ใช้: <b>${fmtQty(r.qty_used)} ${flot.unit||''}</b>
+            </div>
+          </div>
+        </div>`;
+        return;
+      }
       const lot=r.rm_lots;
       const ro=lot?.receive_items?.[0]?.receive_orders;
       html+=`<div class="trace-node rm">

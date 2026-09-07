@@ -521,15 +521,16 @@ async function loadProduction(from, to) {
     return;
   }
 
-  // ดึง production_inputs
+  // ดึง production_inputs (แก้บั๊ก: ชื่อคอลัมน์จริงคือ po_id ไม่ใช่ production_order_id — ของเดิม query ผิดคอลัมน์มาตลอด)
+  // รองรับทั้ง input ที่เป็น RM lot (lot_id) และ FG lot ที่เอามาผลิตต่อ (fg_lot_id)
   const inputMap = {};
   if (prodData.length) {
     const poIds = prodData.map(r=>r.id);
     const { data: inputs } = await db.from('production_inputs')
-      .select('production_order_id,qty_used,unit,rm_lots(lot_number,materials(name,sku))')
-      .in('production_order_id', poIds);
+      .select('po_id,qty_used,unit,rm_lots(lot_number,materials(name,sku)),fg_lots(lot_number,products(name,sku))')
+      .in('po_id', poIds);
     (inputs||[]).forEach(inp => {
-      const pid = inp.production_order_id;
+      const pid = inp.po_id;
       if (!inputMap[pid]) inputMap[pid] = [];
       inputMap[pid].push(inp);
     });
@@ -565,7 +566,11 @@ async function loadProduction(from, to) {
       const fg   = r.fg_lots?.[0];
       const inps = r.inputs||[];
       const rmText = inps.length
-        ? inps.map(i=>`<span style="white-space:nowrap;">${i.rm_lots?.materials?.name||'?'} ${fmtQty(i.qty_used)} ${i.unit}</span>`).join('<br>')
+        ? inps.map(i=>{
+            const isFgIn = !!i.fg_lots;
+            const name = isFgIn ? i.fg_lots?.products?.name : i.rm_lots?.materials?.name;
+            return `<span style="white-space:nowrap;">${isFgIn?'<b style="color:#92400E;">FG</b> ':''}${name||'?'} ${fmtQty(i.qty_used)} ${i.unit}</span>`;
+          }).join('<br>')
         : '-';
       const yld  = fg?.yield_pct;
       const loss = yld!=null ? (100-yld).toFixed(1) : null;
@@ -1023,7 +1028,11 @@ window.exportTab = function(tab) {
           const base=['ผลิต FG',r.po_number,fmtDT(r.completed_at),r.operator,fg?.lot_number||'-',fg?.products?.name||'-',fg?.products?.sku||'-',fg?.initial_qty||0,fg?.unit||'-'];
           if (r.inputs?.length) {
             r.inputs.forEach((inp,i)=>{
-              rows.push([...base, inp.rm_lots?.materials?.sku||'-', inp.rm_lots?.materials?.name||'-', inp.rm_lots?.lot_number||'-', inp.qty_used, inp.unit, i===0?(yld!=null?yld+'%':'-'):'', i===0?loss:'']);
+              const isFgIn = !!inp.fg_lots;
+              const sku = isFgIn ? inp.fg_lots?.products?.sku : inp.rm_lots?.materials?.sku;
+              const name = isFgIn ? inp.fg_lots?.products?.name : inp.rm_lots?.materials?.name;
+              const lotNum = isFgIn ? inp.fg_lots?.lot_number : inp.rm_lots?.lot_number;
+              rows.push([...base, sku||'-', (isFgIn?'[FG] ':'')+(name||'-'), lotNum||'-', inp.qty_used, inp.unit, i===0?(yld!=null?yld+'%':'-'):'', i===0?loss:'']);
             });
           } else {
             rows.push([...base,'-','-','-','-','-',yld!=null?yld+'%':'-',loss]);
