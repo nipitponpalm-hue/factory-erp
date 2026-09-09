@@ -295,7 +295,7 @@
       <div class="card-title">ใบคัด/รีแพ็คล่าสุด</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>เลขที่ใบคัด</th><th>วันที่</th><th>ผู้คัด</th><th style="text-align:right;">Input รวม</th><th style="text-align:right;">Output</th><th>Loss%</th></tr></thead>
+          <thead><tr><th>เลขที่ใบคัด</th><th>วันที่</th><th>ผู้คัด</th><th style="text-align:right;">Input รวม</th><th style="text-align:right;">Output</th><th>Loss%</th><th>สถานะ</th><th></th></tr></thead>
           <tbody id="rpBody"></tbody>
         </table>
       </div>
@@ -314,6 +314,34 @@
       <button class="modal-close" onclick="document.getElementById('detailModal').classList.remove('show')">✕</button>
     </div>
     <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- CANCEL ORDER MODAL (ใบผลิต / ใบคัด) -->
+<div class="modal-overlay" id="cancelOrderModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">ยกเลิกใบสั่ง</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="cancelOrderSub"></div>
+      </div>
+      <button class="modal-close" id="cancelOrderClose">✕</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">ผลผลิตจากใบนี้ยังไม่ถูกนำไปใช้ต่อ จึงยกเลิกได้ — ระบบจะคืนสต็อกวัตถุดิบ/สินค้าต้นทางกลับให้ทั้งหมด แล้ว mark ใบนี้ว่ายกเลิก (เก็บประวัติไว้)</p>
+    <input type="hidden" id="cancelOrderId">
+    <input type="hidden" id="cancelOrderType">
+    <div class="field" style="margin-bottom:12px;">
+      <label>ผู้ยกเลิก *</label>
+      <input type="text" id="cancelOrderOperator" placeholder="ชื่อผู้ยกเลิก">
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>เหตุผล *</label>
+      <input type="text" id="cancelOrderReason" placeholder="เช่น กรอกจำนวนผิด">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="cancelOrderCancelBtn">ปิด</button>
+      <button class="btn btn-primary" id="cancelOrderConfirmBtn" style="background:var(--red);border-color:var(--red);">✓ ยืนยันยกเลิก</button>
+    </div>
   </div>
 </div>
 
@@ -658,24 +686,43 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 // ===== RECENT PO =====
 async function loadRecentPO() {
   const { data } = await db.from('production_orders')
-    .select('id,po_number,completed_at,operator,status,fg_lots(lot_number,products(name,sku),initial_qty,unit)')
+    .select('id,po_number,completed_at,operator,status,fg_lots(id,lot_number,products(name,sku),initial_qty,unit)')
     .order('created_at',{ascending:false}).limit(20);
 
   const body=document.getElementById('poBody');
   const empty=document.getElementById('poEmpty');
   if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
+
+  // เช็คว่า FG lot ที่ผลิตได้ ถูกนำไปใช้ต่อแล้วหรือยัง (จ่าย / ใช้ผลิตต่อ) — ถ้าใช้แล้วยกเลิกไม่ได้
+  const fgLotIds = data.map(r=>r.fg_lots?.[0]?.id).filter(Boolean);
+  const usedFgIds = new Set();
+  if (fgLotIds.length) {
+    const [disp, prodIn] = await Promise.all([
+      db.from('dispatch_items').select('fg_lot_id').in('fg_lot_id', fgLotIds),
+      db.from('production_inputs').select('fg_lot_id').in('fg_lot_id', fgLotIds),
+    ]);
+    (disp.data||[]).forEach(r=>usedFgIds.add(r.fg_lot_id));
+    (prodIn.data||[]).forEach(r=>usedFgIds.add(r.fg_lot_id));
+  }
+
   body.innerHTML = data.map(r=>{
     const fg = r.fg_lots?.[0];
-    return `<tr>
+    const isCancelled = r.status === 'cancelled';
+    const canCancel = !isCancelled && fg && !usedFgIds.has(fg.id);
+    const rowStyle = isCancelled ? 'opacity:.55;' : '';
+    return `<tr style="${rowStyle}">
       <td><span class="lot-num">${r.po_number}</span></td>
       <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.completed_at)}</td>
       <td>${r.operator}</td>
       <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
       <td>${fg?.products?`${fg.products.name}`:'-'}</td>
       <td style="text-align:right;font-weight:700;">${fg?fmtQty(fg.initial_qty):'-'} ${fg?.unit||''}</td>
-      <td><span class="status-badge s-completed">เสร็จสิ้น</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="showDetail('${r.id}','${r.po_number}')">รายละเอียด</button></td>
+      <td>${isCancelled?'<span class="status-badge s-on_hold">ยกเลิกแล้ว</span>':'<span class="status-badge s-completed">เสร็จสิ้น</span>'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="showDetail('${r.id}','${r.po_number}')">รายละเอียด</button>
+        ${canCancel?`<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openCancelOrder('${r.id}','production','${r.po_number}')">ยกเลิก</button>`:''}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -718,6 +765,105 @@ window.showDetail = async function(poId, poNumber) {
       </tr>`).join('')}</tbody></table>
     </div>`;
 };
+
+// ===== CANCEL ORDER (ยกเลิกใบผลิต/ใบคัด — คืนสต็อกต้นทางกลับ) =====
+window.openCancelOrder = function(orderId, orderType, orderNumber) {
+  document.getElementById('cancelOrderId').value = orderId;
+  document.getElementById('cancelOrderType').value = orderType;
+  document.getElementById('cancelOrderSub').textContent = `${orderType==='production'?'ใบผลิต':'ใบคัด/รีแพ็ค'}: ${orderNumber}`;
+  document.getElementById('cancelOrderOperator').value = '';
+  document.getElementById('cancelOrderReason').value = '';
+  document.getElementById('cancelOrderModal').classList.add('show');
+};
+
+document.getElementById('cancelOrderClose').addEventListener('click', () => {
+  document.getElementById('cancelOrderModal').classList.remove('show');
+});
+document.getElementById('cancelOrderCancelBtn').addEventListener('click', () => {
+  document.getElementById('cancelOrderModal').classList.remove('show');
+});
+
+document.getElementById('cancelOrderConfirmBtn').addEventListener('click', async () => {
+  const orderId   = document.getElementById('cancelOrderId').value;
+  const orderType = document.getElementById('cancelOrderType').value;
+  const operator  = document.getElementById('cancelOrderOperator').value.trim();
+  const reason    = document.getElementById('cancelOrderReason').value.trim();
+  if (!operator || !reason) { showToast('กรุณากรอกผู้ยกเลิกและเหตุผล', 'error'); return; }
+
+  showLoading(true);
+  try {
+    if (orderType === 'production') {
+      const { data: order } = await db.from('production_orders').select('po_number').eq('id',orderId).single();
+      const { data: inputs } = await db.from('production_inputs').select('lot_id,fg_lot_id,qty_used,unit').eq('po_id',orderId);
+      const { data: fgLot } = await db.from('fg_lots').select('id,initial_qty,status').eq('po_id',orderId).single();
+
+      // คืนสต็อกต้นทางทุกตัว (RM หรือ FG ที่เอามาผลิตต่อ)
+      for (const inp of (inputs||[])) {
+        if (inp.fg_lot_id) {
+          const { data: srcLot } = await db.from('fg_lots').select('id,status').eq('id',inp.fg_lot_id).single();
+          const { data: srcStock } = await db.from('fg_stock').select('qty_on_hand').eq('fg_lot_id',inp.fg_lot_id).single();
+          const newQty = (srcStock?.qty_on_hand||0) + inp.qty_used;
+          await db.from('fg_stock').update({ qty_on_hand:newQty }).eq('fg_lot_id',inp.fg_lot_id);
+          if (srcLot?.status==='depleted') await db.from('fg_lots').update({status:'available'}).eq('id',inp.fg_lot_id);
+          await db.from('fg_transactions').insert({ fg_lot_id:inp.fg_lot_id, txn_type:'adjust', qty:inp.qty_used, ref_type:'production_cancelled', operator, note:`คืนสต็อก — ยกเลิกใบผลิต ${order?.po_number||''}: ${reason}` });
+        } else if (inp.lot_id) {
+          const { data: srcLot } = await db.from('rm_lots').select('id,status').eq('id',inp.lot_id).single();
+          const { data: srcStock } = await db.from('rm_stock').select('qty_on_hand').eq('lot_id',inp.lot_id).single();
+          const newQty = (srcStock?.qty_on_hand||0) + inp.qty_used;
+          await db.from('rm_stock').update({ qty_on_hand:newQty, updated_at:new Date().toISOString() }).eq('lot_id',inp.lot_id);
+          if (srcLot?.status==='depleted') await db.from('rm_lots').update({status:'available'}).eq('id',inp.lot_id);
+          await db.from('rm_transactions').insert({ lot_id:inp.lot_id, txn_type:'adjust', qty:inp.qty_used, ref_type:'production_cancelled', operator, note:`คืนสต็อก — ยกเลิกใบผลิต ${order?.po_number||''}: ${reason}` });
+        }
+      }
+
+      // ตัดผลผลิต FG lot ออก
+      if (fgLot) {
+        await db.from('fg_stock').update({ qty_on_hand:0 }).eq('fg_lot_id',fgLot.id);
+        await db.from('fg_lots').update({ status:'cancelled' }).eq('id',fgLot.id);
+        await db.from('fg_transactions').insert({ fg_lot_id:fgLot.id, txn_type:'adjust', qty:-(fgLot.initial_qty||0), ref_type:'production_cancelled', operator, note:`ยกเลิกใบผลิต ${order?.po_number||''}: ${reason}` });
+      }
+
+      await db.from('production_orders').update({ status:'cancelled', note: reason }).eq('id',orderId);
+      showToast(`✅ ยกเลิกใบผลิต ${order?.po_number||''} สำเร็จ — คืนสต็อกต้นทางแล้ว`);
+      await loadRecentPO();
+
+    } else {
+      const { data: order } = await db.from('repack_orders').select('rp_number').eq('id',orderId).single();
+      const { data: inputs } = await db.from('repack_inputs').select('lot_id,qty_used').eq('rp_id',orderId);
+      const { data: outputs } = await db.from('repack_outputs').select('new_lot_id,qty_output').eq('rp_id',orderId);
+
+      // คืนสต็อกวัตถุดิบต้นทาง
+      for (const inp of (inputs||[])) {
+        const { data: srcLot } = await db.from('rm_lots').select('id,status').eq('id',inp.lot_id).single();
+        const { data: srcStock } = await db.from('rm_stock').select('qty_on_hand').eq('lot_id',inp.lot_id).single();
+        const newQty = (srcStock?.qty_on_hand||0) + inp.qty_used;
+        await db.from('rm_stock').update({ qty_on_hand:newQty, updated_at:new Date().toISOString() }).eq('lot_id',inp.lot_id);
+        if (srcLot?.status==='depleted') await db.from('rm_lots').update({status:'available'}).eq('id',inp.lot_id);
+        await db.from('rm_transactions').insert({ lot_id:inp.lot_id, txn_type:'adjust', qty:inp.qty_used, ref_type:'repack_cancelled', operator, note:`คืนสต็อก — ยกเลิกใบคัด ${order?.rp_number||''}: ${reason}` });
+      }
+
+      // ตัดผลผลิตทุกเกรดออก
+      for (const out of (outputs||[])) {
+        if (!out.new_lot_id) continue;
+        await db.from('rm_stock').update({ qty_on_hand:0 }).eq('lot_id',out.new_lot_id);
+        await db.from('rm_lots').update({ status:'cancelled' }).eq('id',out.new_lot_id);
+        await db.from('rm_transactions').insert({ lot_id:out.new_lot_id, txn_type:'adjust', qty:-(out.qty_output||0), ref_type:'repack_cancelled', operator, note:`ยกเลิกใบคัด ${order?.rp_number||''}: ${reason}` });
+      }
+
+      await db.from('repack_orders').update({ status:'cancelled', note: reason }).eq('id',orderId);
+      showToast(`✅ ยกเลิกใบคัด ${order?.rp_number||''} สำเร็จ — คืนสต็อกต้นทางแล้ว`);
+      await loadRecentRP();
+    }
+
+    document.getElementById('cancelOrderModal').classList.remove('show');
+    await loadMaster();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
 
 // ===== INIT =====
 (async function init(){
@@ -1038,24 +1184,45 @@ window.switchTab = function(tab) {
   // ===== RECENT REPACK =====
   window.loadRecentRP = async function() {
     const { data } = await db.from('repack_orders')
-      .select('id,rp_number,repack_date,operator,repack_inputs(qty_used),repack_outputs(qty_output,unit)')
+      .select('id,rp_number,repack_date,operator,status,repack_inputs(qty_used),repack_outputs(qty_output,unit,new_lot_id)')
       .order('created_at',{ascending:false}).limit(20);
     const body=document.getElementById('rpBody');
     const empty=document.getElementById('rpEmpty');
     if (!data?.length){ body.innerHTML=''; empty.style.display='block'; return; }
     empty.style.display='none';
+
+    // เช็คว่า RM lot ผลลัพธ์จากการคัด ถูกนำไปใช้ต่อแล้วหรือยัง (จ่าย / ผลิต / คัดต่อ)
+    const outLotIds = data.flatMap(r=>(r.repack_outputs||[]).map(o=>o.new_lot_id)).filter(Boolean);
+    const usedRmIds = new Set();
+    if (outLotIds.length) {
+      const [disp, prodIn, repackIn] = await Promise.all([
+        db.from('dispatch_items').select('rm_lot_id').in('rm_lot_id', outLotIds),
+        db.from('production_inputs').select('lot_id').in('lot_id', outLotIds),
+        db.from('repack_inputs').select('lot_id').in('lot_id', outLotIds),
+      ]);
+      (disp.data||[]).forEach(r=>usedRmIds.add(r.rm_lot_id));
+      (prodIn.data||[]).forEach(r=>usedRmIds.add(r.lot_id));
+      (repackIn.data||[]).forEach(r=>usedRmIds.add(r.lot_id));
+    }
+
     body.innerHTML=data.map(r=>{
       const totalIn  = (r.repack_inputs||[]).reduce((s,i)=>s+(i.qty_used||0),0);
       const totalOut = (r.repack_outputs||[]).reduce((s,o)=>s+(o.qty_output||0),0);
       const unit     = r.repack_outputs?.[0]?.unit||'';
       const lossPct  = totalIn>0?((totalIn-totalOut)/totalIn*100).toFixed(1):'-';
-      return `<tr>
+      const isCancelled = r.status === 'cancelled';
+      const anyOutputUsed = (r.repack_outputs||[]).some(o=>usedRmIds.has(o.new_lot_id));
+      const canCancel = !isCancelled && !anyOutputUsed;
+      const rowStyle = isCancelled ? 'opacity:.55;' : '';
+      return `<tr style="${rowStyle}">
         <td><span class="lot-num">${r.rp_number}</span></td>
         <td>${fmtDate(r.repack_date)}</td>
         <td>${r.operator||'-'}</td>
         <td style="text-align:right;">${fmtQty(totalIn)} ${unit}</td>
         <td style="text-align:right;font-weight:600;color:var(--green-deep);">${fmtQty(totalOut)} ${unit}</td>
         <td style="font-weight:700;color:${parseFloat(lossPct)>30?'var(--amber)':'var(--ink)'};">${lossPct}%</td>
+        <td>${isCancelled?'<span class="status-badge s-on_hold">ยกเลิกแล้ว</span>':'<span class="status-badge s-completed">เสร็จสิ้น</span>'}</td>
+        <td>${canCancel?`<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openCancelOrder('${r.id}','repack','${r.rp_number}')">ยกเลิก</button>`:''}</td>
       </tr>`;
     }).join('');
   };
