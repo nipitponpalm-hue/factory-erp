@@ -193,29 +193,34 @@
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
       <div>
-        <div class="modal-title">ตัดสต็อก</div>
+        <div class="modal-title" id="adjModalTitle">ปรับสต็อก</div>
         <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="adjModalSub"></div>
       </div>
       <button class="modal-close" onclick="document.getElementById('adjModal').classList.remove('show')">✕</button>
     </div>
     <div>
       <div class="field" style="margin-bottom:12px;">
-        <label>จำนวนที่ตัดออก * <span id="adjMaxLabel" style="color:var(--ink-soft);font-weight:400;"></span></label>
+        <label>ทิศทาง *</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+            <input type="radio" name="adjDirection" value="out" checked style="width:16px;height:16px;accent-color:var(--red);"> ลดสต็อก (ตัดออก)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+            <input type="radio" name="adjDirection" value="in" style="width:16px;height:16px;accent-color:var(--green-deep);"> เพิ่มสต็อก (แก้ไขคืน)
+          </label>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label id="adjQtyLabel">จำนวนที่ตัดออก * <span id="adjMaxLabel" style="color:var(--ink-soft);font-weight:400;"></span></label>
         <input type="number" id="adjQty" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>เหตุผล *</label>
-        <select id="adjReason">
-          <option value="" disabled selected>— เลือกเหตุผล —</option>
-          <option value="giveaway">มอบให้ / ของแถม</option>
-          <option value="spoilage">เน่าเสีย</option>
-          <option value="lost">สูญหาย</option>
-          <option value="other">อื่นๆ</option>
-        </select>
+        <select id="adjReason"></select>
       </div>
       <div class="field" style="margin-bottom:12px;">
         <label>ผู้ดำเนินการ *</label>
-        <input type="text" id="adjOperator" placeholder="ชื่อผู้ตัดสต็อก">
+        <input type="text" id="adjOperator" placeholder="ชื่อผู้ดำเนินการ">
       </div>
       <div class="field" style="margin-bottom:16px;">
         <label>หมายเหตุ</label>
@@ -412,7 +417,7 @@ function renderLots(search='', status='') {
     <td><span class="status-badge ${statusCls[l.status]||''}">${statusLabel[l.status]||l.status}</span></td>
     <td style="white-space:nowrap;">
       <button class="btn btn-ghost btn-sm" onclick="showLotDetail('${l.id}')">รายละเอียด</button>
-      ${l.status==='available' && (l.rm_stock?.qty_on_hand||0)>0 ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openAdjModal('${l.id}','rm')">ตัดสต็อก</button>` : ''}
+      ${(l.status==='available'||l.status==='depleted') ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openAdjModal('${l.id}','rm')">ปรับสต็อก</button>` : ''}
     </td>
   </tr>`).join('');
 }
@@ -467,7 +472,7 @@ function renderFG(data) {
     <td style="text-align:right;font-weight:700;">${fmtQty(l.fg_stock?.qty_on_hand||0)}</td>
     <td>${l.unit}</td>
     <td><span class="status-badge ${stCls[l.status]||''}">${stLbl[l.status]||l.status}</span></td>
-    <td>${l.status==='available' && (l.fg_stock?.qty_on_hand||0)>0 ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openAdjModal('${l.id}','fg')">ตัดสต็อก</button>` : ''}</td>
+    <td>${(l.status==='available'||l.status==='depleted') ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openAdjModal('${l.id}','fg')">ปรับสต็อก</button>` : ''}</td>
   </tr>`).join('');
 }
 
@@ -499,9 +504,35 @@ document.getElementById('txnTypeFilter').addEventListener('change', e => renderT
 
 window.showLotDetail = showLotDetail;
 
-// ===== STOCK ADJUSTMENT (RM หรือ FG) =====
+// ===== STOCK ADJUSTMENT (RM หรือ FG — ลด หรือ เพิ่ม) =====
 let adjLot = null;
 let adjLotType = 'rm';
+
+const ADJ_REASON_OUT = { giveaway:'มอบให้/ของแถม', spoilage:'เน่าเสีย', lost:'สูญหาย', other:'อื่นๆ' };
+const ADJ_REASON_IN  = { correction:'แก้ไขข้อมูลผิดพลาด', found:'นับเจอเพิ่มจากที่บันทึกไว้', returned:'ลูกค้าคืน (นอกระบบจ่ายสินค้า)', other:'อื่นๆ' };
+const ADJ_REASON_LABEL = { ...ADJ_REASON_OUT, ...ADJ_REASON_IN };
+
+function updateAdjFormByDirection() {
+  const direction = document.querySelector('input[name="adjDirection"]:checked').value;
+  const isOut = direction === 'out';
+  const onHand = adjLot ? (adjLotType==='fg' ? (adjLot.fg_stock?.qty_on_hand||0) : (adjLot.rm_stock?.qty_on_hand||0)) : 0;
+
+  document.getElementById('adjModalTitle').textContent = isOut ? 'ตัดสต็อก (ลด)' : 'ปรับสต็อกเพิ่ม';
+  document.getElementById('adjQtyLabel').innerHTML = isOut
+    ? `จำนวนที่ตัดออก * <span id="adjMaxLabel" style="color:var(--ink-soft);font-weight:400;">(สูงสุด ${fmtQty(onHand)} ${adjLot?.unit||''})</span>`
+    : `จำนวนที่เพิ่ม *`;
+  document.getElementById('adjQty').removeAttribute('max');
+  if (isOut) document.getElementById('adjQty').max = onHand;
+
+  const reasons = isOut ? ADJ_REASON_OUT : ADJ_REASON_IN;
+  document.getElementById('adjReason').innerHTML = '<option value="" disabled selected>— เลือกเหตุผล —</option>'
+    + Object.entries(reasons).map(([k,label])=>`<option value="${k}">${label}</option>`).join('');
+
+  document.getElementById('adjConfirmBtn').textContent = isOut ? '✓ ยืนยันตัดสต็อก' : '✓ ยืนยันเพิ่มสต็อก';
+  document.getElementById('adjConfirmBtn').style.background = isOut ? 'var(--red)' : 'var(--green-deep)';
+  document.getElementById('adjConfirmBtn').style.borderColor = isOut ? 'var(--red)' : 'var(--green-deep)';
+}
+document.querySelectorAll('input[name="adjDirection"]').forEach(r => r.addEventListener('change', updateAdjFormByDirection));
 
 window.openAdjModal = function(lotId, type) {
   adjLotType = type || 'rm';
@@ -510,28 +541,27 @@ window.openAdjModal = function(lotId, type) {
   const onHand = adjLotType==='fg' ? (adjLot.fg_stock?.qty_on_hand || 0) : (adjLot.rm_stock?.qty_on_hand || 0);
   const itemName = adjLotType==='fg' ? adjLot.products?.name : adjLot.materials?.name;
   document.getElementById('adjModalSub').textContent = `${adjLotType==='fg'?'[FG] ':''}${adjLot.lot_number} — ${itemName||''} (คงเหลือ ${fmtQty(onHand)} ${adjLot.unit})`;
-  document.getElementById('adjMaxLabel').textContent = `(สูงสุด ${fmtQty(onHand)} ${adjLot.unit})`;
   document.getElementById('adjQty').value = '';
-  document.getElementById('adjQty').max = onHand;
-  document.getElementById('adjReason').value = '';
+  document.querySelector('input[name="adjDirection"][value="out"]').checked = true;
   document.getElementById('adjOperator').value = '';
   document.getElementById('adjNote').value = '';
+  updateAdjFormByDirection();
   document.getElementById('adjModal').classList.add('show');
 };
 
-const ADJ_REASON_LABEL = { giveaway:'มอบให้/ของแถม', spoilage:'เน่าเสีย', lost:'สูญหาย', other:'อื่นๆ' };
-
 document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
   if (!adjLot) return;
-  const isFg     = adjLotType === 'fg';
-  const onHand   = isFg ? (adjLot.fg_stock?.qty_on_hand || 0) : (adjLot.rm_stock?.qty_on_hand || 0);
-  const qty      = parseFloat(document.getElementById('adjQty').value);
-  const reason   = document.getElementById('adjReason').value;
-  const operator = document.getElementById('adjOperator').value.trim();
-  const note     = document.getElementById('adjNote').value.trim() || null;
+  const isFg      = adjLotType === 'fg';
+  const direction = document.querySelector('input[name="adjDirection"]:checked').value;
+  const isOut     = direction === 'out';
+  const onHand    = isFg ? (adjLot.fg_stock?.qty_on_hand || 0) : (adjLot.rm_stock?.qty_on_hand || 0);
+  const qty       = parseFloat(document.getElementById('adjQty').value);
+  const reason    = document.getElementById('adjReason').value;
+  const operator  = document.getElementById('adjOperator').value.trim();
+  const note      = document.getElementById('adjNote').value.trim() || null;
 
   if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
-  if (qty > onHand)     { showToast(`จำนวนเกินคงเหลือ (${fmtQty(onHand)} ${adjLot.unit})`, 'error'); return; }
+  if (isOut && qty > onHand) { showToast(`จำนวนเกินคงเหลือ (${fmtQty(onHand)} ${adjLot.unit})`, 'error'); return; }
   if (!reason)          { showToast('กรุณาเลือกเหตุผล', 'error'); return; }
   if (!operator)        { showToast('กรุณาระบุผู้ดำเนินการ', 'error'); return; }
 
@@ -544,34 +574,39 @@ document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
       adj_number: adjNumber,
       lot_id: isFg ? null : adjLot.id,
       fg_lot_id: isFg ? adjLot.id : null,
-      qty, unit: adjLot.unit, reason, note, operator,
+      qty, unit: adjLot.unit, reason, note, operator, direction,
     });
     if (adjErr) throw adjErr;
 
-    const newQty = onHand - qty;
+    const newQty = isOut ? (onHand - qty) : (onHand + qty);
+    const actionLabel = isOut ? 'ตัดสต็อก' : 'เพิ่มสต็อก';
+    const txnQty = isOut ? -qty : qty;
+
     if (isFg) {
       const { error: stErr } = await db.from('fg_stock').update({ qty_on_hand: newQty }).eq('fg_lot_id', adjLot.id);
       if (stErr) throw stErr;
-      if (newQty <= 0) await db.from('fg_lots').update({ status: 'depleted' }).eq('id', adjLot.id);
+      if (isOut && newQty <= 0) await db.from('fg_lots').update({ status: 'depleted' }).eq('id', adjLot.id);
+      if (!isOut && adjLot.status === 'depleted') await db.from('fg_lots').update({ status: 'available' }).eq('id', adjLot.id);
 
       await db.from('fg_transactions').insert({
-        fg_lot_id: adjLot.id, txn_type: 'adjust', qty: -qty,
+        fg_lot_id: adjLot.id, txn_type: 'adjust', qty: txnQty,
         ref_type: 'stock_adjustment', operator,
-        note: `ตัดสต็อก ${adjNumber} — ${ADJ_REASON_LABEL[reason]}${note ? ' | '+note : ''}`,
+        note: `${actionLabel} ${adjNumber} — ${ADJ_REASON_LABEL[reason]}${note ? ' | '+note : ''}`,
       });
     } else {
-      const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: newQty }).eq('lot_id', adjLot.id);
+      const { error: stErr } = await db.from('rm_stock').update({ qty_on_hand: newQty, updated_at: new Date().toISOString() }).eq('lot_id', adjLot.id);
       if (stErr) throw stErr;
-      if (newQty <= 0) await db.from('rm_lots').update({ status: 'depleted' }).eq('id', adjLot.id);
+      if (isOut && newQty <= 0) await db.from('rm_lots').update({ status: 'depleted' }).eq('id', adjLot.id);
+      if (!isOut && adjLot.status === 'depleted') await db.from('rm_lots').update({ status: 'available' }).eq('id', adjLot.id);
 
       await db.from('rm_transactions').insert({
-        lot_id: adjLot.id, txn_type: 'adjust', qty: -qty,
+        lot_id: adjLot.id, txn_type: 'adjust', qty: txnQty,
         ref_type: 'stock_adjustment', operator,
-        note: `ตัดสต็อก ${adjNumber} — ${ADJ_REASON_LABEL[reason]}${note ? ' | '+note : ''}`,
+        note: `${actionLabel} ${adjNumber} — ${ADJ_REASON_LABEL[reason]}${note ? ' | '+note : ''}`,
       });
     }
 
-    showToast(`✅ ตัดสต็อก ${adjNumber} สำเร็จ — ${fmtQty(qty)} ${adjLot.unit} (${ADJ_REASON_LABEL[reason]})`);
+    showToast(`✅ ${actionLabel} ${adjNumber} สำเร็จ — ${fmtQty(qty)} ${adjLot.unit} (${ADJ_REASON_LABEL[reason]})`);
     document.getElementById('adjModal').classList.remove('show');
     adjLot = null;
     await loadAll();
