@@ -213,7 +213,7 @@ async function buildFullOriginHtml(lotId, depth) {
     const { data: rl } = await db.from('rm_lots')
       .select('lot_number,receive_date,suppliers(name),receive_items(receive_orders(ro_number))')
       .eq('id', lotId).single();
-    const ro = rl?.receive_items?.[0]?.receive_orders;
+    const ro = rl?.receive_items?.receive_orders;
     return `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">
       📥 ต้นทาง: รับเข้าตรงจาก <b>${rl?.suppliers?.name||'-'}</b> วันที่ ${rl?.receive_date?fmtDate(rl.receive_date):'-'}${ro?` (ใบรับ ${ro.ro_number})`:''} — ไม่ผ่านคัด/รีแพ็ค
     </div>`;
@@ -238,7 +238,7 @@ async function traceBackwardFromFG(fgLotId) {
   showLoading(true);
   try {
     const { data:fg } = await db.from('fg_lots')
-      .select('lot_number,produced_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,completed_at,operator)')
+      .select('lot_number,produced_date,exp_date,initial_qty,unit,status,po_id,ro_item_id,supplier_id,purchase_order_id,products(sku,name),production_orders(po_number,completed_at,operator),suppliers(name),receive_items(receive_orders(ro_number)),purchase_orders(internal_ref,po_number)')
       .eq('id',fgLotId).single();
 
     // dispatch
@@ -247,12 +247,12 @@ async function traceBackwardFromFG(fgLotId) {
       .eq('fg_lot_id',fgLotId);
 
     // Inputs ที่ใช้ผลิต — อาจเป็น RM lot หรือ FG lot อื่นที่เอามาผลิตต่อ (เช่น แบ่งบรรจุ)
-    const { data:po } = await db.from('fg_lots').select('po_id').eq('id',fgLotId).single();
+    // ถ้า po_id เป็น null แปลว่า FG lot นี้ "ซื้อสำเร็จรูปมาโดยตรง" ไม่ได้ผ่านการผลิต — ต้นทางคือใบรับ/PO/Supplier แทน
     let rmInputs=[];
-    if (po?.po_id) {
+    if (fg.po_id) {
       const { data:inp } = await db.from('production_inputs')
         .select('qty_used,rm_lots(id,lot_number,receive_date,exp_date,unit,suppliers(name),materials(sku,name),receive_items(receive_orders(ro_number))),fg_lots(id,lot_number,produced_date,exp_date,unit,products(sku,name))')
-        .eq('po_id',po.po_id);
+        .eq('po_id',fg.po_id);
       rmInputs = inp||[];
     }
 
@@ -269,6 +269,25 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
   document.getElementById('resultTitle').textContent=`Backward Trace — FG Lot: ${fg.lot_number}`;
 
   let html = '';
+
+  // ถ้าไม่ได้ผลิตเอง (po_id ว่าง) แสดงว่าซื้อสำเร็จรูปมาโดยตรง — โชว์ต้นทางจากใบรับ/PO/Supplier แทน
+  if (!fg.po_id) {
+    const ro = fg.receive_items?.receive_orders;
+    const po = fg.purchase_orders;
+    html += `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">📥 ต้นทาง (ซื้อสำเร็จรูปมาโดยตรง — ไม่ได้ผลิตเอง)</div>`;
+    html += `<div class="trace-node" style="border-left-color:#F59E0B;">
+      <div class="trace-node-icon">📥</div>
+      <div class="trace-node-body">
+        <div class="trace-node-lot">${fg.suppliers?.name||'-'}</div>
+        <div class="trace-node-sub">
+          ${ro?`ใบรับ: <b>${ro.ro_number}</b><br>`:''}
+          ${po?`อ้างอิง PO: <b>${po.internal_ref}${po.po_number?' / '+po.po_number:''}</b><br>`:''}
+          วันที่รับ/ผลิต: ${fg.produced_date?fmtDate(fg.produced_date):'-'}
+        </div>
+      </div>
+    </div>`;
+    html += `<div class="trace-arrow">↓</div>`;
+  }
 
   // Input Nodes (RM lot หรือ FG lot ที่เอามาผลิตต่อ)
   if (rmInputs.length) {
@@ -290,7 +309,7 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
         return;
       }
       const lot=r.rm_lots;
-      const ro=lot?.receive_items?.[0]?.receive_orders;
+      const ro=lot?.receive_items?.receive_orders;
       html+=`<div class="trace-node rm">
         <div class="trace-node-icon">🟦</div>
         <div class="trace-node-body">
@@ -440,7 +459,7 @@ window.traceRMDirect = async function(rmLotId) {
     .select('lot_number,receive_date,exp_date,initial_qty,unit,status,materials(sku,name),suppliers(name),receive_items(receive_orders(ro_number))')
     .eq('id',rmLotId).single();
   if (!rm) { showLoading(false); return; }
-  const ro = rm.receive_items?.[0]?.receive_orders;
+  const ro = rm.receive_items?.receive_orders;
   const originHtml = await buildFullOriginHtml(rmLotId);
   document.getElementById('resultTitle').textContent=`Backward Trace — RM Lot: ${rm.lot_number}`;
   document.getElementById('traceChain').innerHTML=`
@@ -619,7 +638,7 @@ async function buildForwardBranches(lotId, unit, depth) {
 
 function renderForwardRM(rm, originHtml, branchesHtml) {
   document.getElementById('resultTitle').textContent=`Forward Trace — RM Lot: ${rm.lot_number}`;
-  const ro=rm.receive_items?.[0]?.receive_orders;
+  const ro=rm.receive_items?.receive_orders;
   let html=``;
 
   // Supplier / RO
