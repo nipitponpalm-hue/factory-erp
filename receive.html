@@ -990,6 +990,19 @@ document.getElementById('roDetailSaveBtn').addEventListener('click', async () =>
         await db.from(lotTable).update({ initial_qty: newQty, supplier_lot: newLot, exp_date: newExp }).eq('id', item._lot.id);
       }
     }
+
+    // คำนวณสถานะ PO ใหม่ทั้งใบ — ถ้าแก้ไขจำนวนรับลง PO ที่เคย "ปิดแล้ว" ต้องเปิดกลับเป็น "รับบางส่วน" อัตโนมัติ
+    if (detailRO.po_id) {
+      const { data: updatedItems } = await db.from('po_items').select('qty_ordered,qty_received').eq('po_id', detailRO.po_id);
+      const allDone = (updatedItems||[]).every(it => it.qty_received >= it.qty_ordered);
+      const anyDone = (updatedItems||[]).some(it => it.qty_received > 0);
+      const newStatus = allDone ? 'closed' : anyDone ? 'partial' : 'open';
+      await db.from('purchase_orders').update({
+        status: newStatus,
+        closed_at: newStatus === 'closed' ? new Date().toISOString() : null,
+      }).eq('id', detailRO.po_id);
+    }
+
     showToast('บันทึกการแก้ไขใบรับสำเร็จ');
     document.getElementById('roDetailOverlay').style.display='none';
     await loadMaster();
