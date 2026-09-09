@@ -185,7 +185,7 @@ document.getElementById('bwSearchBtn').addEventListener('click', async ()=>{
   document.getElementById('noResult').style.display='block';
 });
 
-// ===== ORIGIN: เช็คว่า Lot นี้เป็นผลผลิตจากการคัด/รีแพ็ค หรือรับเข้าตรงๆ =====
+// ===== ORIGIN: เช็คว่า Lot นี้เป็นผลผลิตจากการคัด/รีแพ็ค หรือรับเข้าตรงๆ (1 ชั้น) =====
 async function getLotOrigin(lotId) {
   const { data: out } = await db.from('repack_outputs')
     .select('rp_id,grade,repack_orders(rp_number,repack_date,operator)')
@@ -193,22 +193,44 @@ async function getLotOrigin(lotId) {
   if (!out?.length) return null;
   const o = out[0];
   const { data: srcInputs } = await db.from('repack_inputs')
-    .select('qty_used,rm_lots(lot_number)')
+    .select('qty_used,lot_id,rm_lots(id,lot_number)')
     .eq('rp_id', o.rp_id);
   return {
     rpNumber: o.repack_orders?.rp_number, repackDate: o.repack_orders?.repack_date, operator: o.repack_orders?.operator,
     grade: o.grade,
-    sources: (srcInputs||[]).map(s => ({ lot_number: s.rm_lots?.lot_number, qty: s.qty_used })),
+    sources: (srcInputs||[]).map(s => ({ lot_id: s.lot_id, lot_number: s.rm_lots?.lot_number, qty: s.qty_used })),
   };
 }
 
-function originNoteHtml(origin) {
-  if (!origin) return `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">📋 รับเข้าโดยตรง — ไม่ผ่านคัด/รีแพ็ค</div>`;
-  const srcTxt = origin.sources.map(s=>`${s.lot_number||'-'} (${fmtQty(s.qty)})`).join(', ');
+// ===== ไล่ย้อนชั้นคัด/รีแพ็คทั้งหมดจนถึงการรับเข้าจริง (รองรับหลายชั้น + คลิกดู lot ระหว่างทางได้) =====
+async function buildFullOriginHtml(lotId, depth) {
+  depth = depth || 0;
+  if (depth > 8) return `<div style="font-size:11px;color:var(--red);margin-top:4px;">(ย้อนลึกเกินไป — หยุดติดตาม)</div>`;
+
+  const origin = await getLotOrigin(lotId);
+  if (!origin) {
+    // รับเข้าตรง — ดึงข้อมูลการรับจริงมาแสดงเป็นจุดสิ้นสุดของสาย
+    const { data: rl } = await db.from('rm_lots')
+      .select('lot_number,receive_date,suppliers(name),receive_items(receive_orders(ro_number))')
+      .eq('id', lotId).single();
+    const ro = rl?.receive_items?.[0]?.receive_orders;
+    return `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">
+      📥 ต้นทาง: รับเข้าตรงจาก <b>${rl?.suppliers?.name||'-'}</b> วันที่ ${rl?.receive_date?fmtDate(rl.receive_date):'-'}${ro?` (ใบรับ ${ro.ro_number})`:''} — ไม่ผ่านคัด/รีแพ็ค
+    </div>`;
+  }
+
+  const srcHtml = origin.sources.map(s =>
+    `<span class="lot-num" style="cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation();traceForwardFromRM('${s.lot_id}')">${s.lot_number||'-'}</span> (${fmtQty(s.qty)})`
+  ).join(', ');
+
+  // ไล่ย้อนต่อจาก source ตัวแรก (ปกติคัด/รีแพ็ค 1 ครั้งมักมาจากล็อตเดียว หรือหลายล็อตรวมกัน — แสดงสายของตัวแรกเป็นหลัก)
+  const nextId = origin.sources[0]?.lot_id;
+  const deeperHtml = nextId ? await buildFullOriginHtml(nextId, depth+1) : '';
+
   return `<div style="font-size:11.5px;color:#92400E;background:#FEF3C7;padding:4px 8px;border-radius:5px;margin-top:4px;">
     ✂️ ผ่านคัด/รีแพ็ค: <b>${origin.rpNumber||'-'}</b> โดย ${origin.operator||'-'} (${origin.repackDate?fmtDate(origin.repackDate):'-'})${origin.grade?` — เกรด <b>${origin.grade}</b>`:''}<br>
-    จาก Lot ต้นทาง: ${srcTxt||'-'}
-  </div>`;
+    จาก Lot ต้นทาง: ${srcHtml||'-'}
+  </div>${deeperHtml}`;
 }
 
 // ===== BACKWARD: FG Lot → RM Lots → Suppliers =====
@@ -234,9 +256,9 @@ async function traceBackwardFromFG(fgLotId) {
       rmInputs = inp||[];
     }
 
-    // เช็คว่าแต่ละ RM lot ที่ใช้ผลิต มาจากการคัด/รีแพ็คหรือไม่
+    // เช็คว่าแต่ละ RM lot ที่ใช้ผลิต มาจากการคัด/รีแพ็คหรือไม่ (ไล่ย้อนได้หลายชั้นจนถึงการรับเข้าจริง)
     for (const r of rmInputs) {
-      if (r.rm_lots?.id) r._origin = await getLotOrigin(r.rm_lots.id);
+      if (r.rm_lots?.id) r._originHtml = await buildFullOriginHtml(r.rm_lots.id);
     }
 
     renderBackwardFG(fg, rmInputs, dis||[]);
@@ -281,7 +303,7 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
             ${lot?.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(lot.exp_date)}`:''}<br>
             จำนวนที่ใช้: <b>${fmtQty(r.qty_used)} ${lot?.unit||''}</b>
           </div>
-          ${originNoteHtml(r._origin)}
+          ${r._originHtml||''}
         </div>
       </div>`;
     });
@@ -419,7 +441,7 @@ window.traceRMDirect = async function(rmLotId) {
     .eq('id',rmLotId).single();
   if (!rm) { showLoading(false); return; }
   const ro = rm.receive_items?.[0]?.receive_orders;
-  const origin = await getLotOrigin(rmLotId);
+  const originHtml = await buildFullOriginHtml(rmLotId);
   document.getElementById('resultTitle').textContent=`Backward Trace — RM Lot: ${rm.lot_number}`;
   document.getElementById('traceChain').innerHTML=`
     <div class="trace-node rm">
@@ -432,7 +454,7 @@ window.traceRMDirect = async function(rmLotId) {
           วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'}${rm.exp_date?` &nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
           จำนวนทั้งหมด: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; <b style="color:var(--green-deep);">จ่ายตรงให้ลูกค้า</b>
         </div>
-        ${originNoteHtml(origin)}
+        ${originHtml}
       </div>
     </div>`;
   document.getElementById('resultWrap').style.display='block';
@@ -479,17 +501,17 @@ document.getElementById('fwSearchBtn').addEventListener('click', async()=>{
 });
 
 // ===== FORWARD: RM → (คัด/รีแพ็ค)* → PO ผลิต → FG → DO, หรือจ่ายตรง =====
-async function traceForwardFromRM(rmLotId) {
+window.traceForwardFromRM = async function traceForwardFromRM(rmLotId) {
   showLoading(true);
   try {
     const { data:rm } = await db.from('rm_lots')
       .select('lot_number,receive_date,exp_date,initial_qty,unit,status,materials(sku,name),suppliers(name),receive_items(receive_orders(ro_number,receive_date))')
       .eq('id',rmLotId).single();
-    const origin = await getLotOrigin(rmLotId);
+    const originHtml = await buildFullOriginHtml(rmLotId);
     const branches = await buildForwardBranches(rmLotId, rm.unit, 0);
-    renderForwardRM(rm, origin, branches);
+    renderForwardRM(rm, originHtml, branches);
   } finally { showLoading(false); }
-}
+};
 
 // สร้าง HTML ของทุกสิ่งที่เกิดขึ้น "ต่อจาก" lot นี้ — จ่ายตรง / ผลิตเป็น FG / คัด-รีแพ็ค (วนซ้ำได้หลายชั้น)
 async function buildForwardBranches(lotId, unit, depth) {
@@ -577,10 +599,10 @@ async function buildForwardBranches(lotId, unit, depth) {
 
     for (const out of (outputs||[])) {
       html += `<div class="trace-arrow">↓</div>`;
-      html += `<div class="trace-node rm">
+      html += `<div class="trace-node rm" style="cursor:pointer;" onclick="traceForwardFromRM('${out.new_lot_id}')">
         <div class="trace-node-icon">🟦</div>
         <div class="trace-node-body">
-          <div class="trace-node-lot">${out.rm_lots?.lot_number||'-'} ${out.grade?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;">เกรด ${out.grade}</span>`:''}</div>
+          <div class="trace-node-lot">${out.rm_lots?.lot_number||'-'} ${out.grade?`<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;">เกรด ${out.grade}</span>`:''} <span style="font-size:11px;color:var(--green-deep);">→ คลิกดูรายละเอียด</span></div>
           <div class="trace-node-sub">ผลผลิตจากการคัด/รีแพ็ค &nbsp;|&nbsp; จำนวน: <b>${fmtQty(out.qty_output)} ${out.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${out.rm_lots?.status}" style="font-size:11px;">${out.rm_lots?.status||'-'}</span></div>
         </div>
       </div>`;
@@ -595,7 +617,7 @@ async function buildForwardBranches(lotId, unit, depth) {
   return html;
 }
 
-function renderForwardRM(rm, origin, branchesHtml) {
+function renderForwardRM(rm, originHtml, branchesHtml) {
   document.getElementById('resultTitle').textContent=`Forward Trace — RM Lot: ${rm.lot_number}`;
   const ro=rm.receive_items?.[0]?.receive_orders;
   let html=``;
@@ -611,7 +633,7 @@ function renderForwardRM(rm, origin, branchesHtml) {
         วันรับ: ${rm.receive_date?fmtDate(rm.receive_date):'-'} ${rm.exp_date?`&nbsp;|&nbsp; EXP: ${fmtDate(rm.exp_date)}`:''}<br>
         จำนวน: <b>${fmtQty(rm.initial_qty)} ${rm.unit}</b> &nbsp;|&nbsp; สถานะ: <span class="status-badge s-${rm.status}" style="font-size:11px;">${rm.status}</span>
       </div>
-      ${originNoteHtml(origin)}
+      ${originHtml}
     </div>
   </div>`;
 
