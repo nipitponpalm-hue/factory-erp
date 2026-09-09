@@ -238,7 +238,7 @@ async function traceBackwardFromFG(fgLotId) {
   showLoading(true);
   try {
     const { data:fg } = await db.from('fg_lots')
-      .select('lot_number,produced_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,production_date,operator)')
+      .select('lot_number,produced_date,exp_date,initial_qty,unit,status,products(sku,name),production_orders(po_number,completed_at,operator)')
       .eq('id',fgLotId).single();
 
     // dispatch
@@ -317,7 +317,7 @@ function renderBackwardFG(fg, rmInputs, dispatches) {
       <div class="trace-node-icon">⚙️</div>
       <div class="trace-node-body">
         <div class="trace-node-lot">${po.po_number}</div>
-        <div class="trace-node-sub">ผลิตโดย: ${po.operator} &nbsp;|&nbsp; วันผลิต: ${fmtDT(po.production_date)}</div>
+        <div class="trace-node-sub">ผลิตโดย: ${po.operator} &nbsp;|&nbsp; วันผลิต: ${fmtDT(po.completed_at)}</div>
       </div>
     </div>`;
     html+=`<div class="trace-arrow">↓</div>`;
@@ -535,7 +535,7 @@ async function buildForwardBranches(lotId, unit, depth) {
 
   // 2) เอาไปผลิตเป็น FG
   const { data:inputs } = await db.from('production_inputs')
-    .select('qty_used,po_id,production_orders(po_number,production_date,operator,fg_lots(id,lot_number,products(name,sku),produced_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
+    .select('qty_used,po_id,production_orders(po_number,completed_at,operator,fg_lots(id,lot_number,products(name,sku),produced_date,exp_date,initial_qty,unit,status,dispatch_items(qty,dispatch_orders(do_number,dispatch_date,customers(name)))))')
     .eq('lot_id',lotId);
   (inputs||[]).forEach(inp=>{
     const po=inp.production_orders;
@@ -545,7 +545,7 @@ async function buildForwardBranches(lotId, unit, depth) {
       <div class="trace-node-icon">⚙️</div>
       <div class="trace-node-body">
         <div class="trace-node-lot">${po?.po_number||'-'}</div>
-        <div class="trace-node-sub">ผลิตโดย: ${po?.operator||'-'} &nbsp;|&nbsp; วันผลิต: ${po?.production_date?fmtDT(po.production_date):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(inp.qty_used)} ${unit}</b></div>
+        <div class="trace-node-sub">ผลิตโดย: ${po?.operator||'-'} &nbsp;|&nbsp; วันผลิต: ${po?.completed_at?fmtDT(po.completed_at):'-'}<br>จำนวนที่ใช้จาก Lot นี้: <b>${fmtQty(inp.qty_used)} ${unit}</b></div>
       </div>
     </div>`;
     fgLots.forEach(fg=>{
