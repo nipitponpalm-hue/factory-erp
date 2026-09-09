@@ -20,6 +20,9 @@
 .cat-group-body table { margin-top:8px; }
 .cat-row { cursor:pointer; }
 .cat-row:hover td { background:var(--surface); }
+.badge-type { display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px; }
+.badge-type.material { background:#E0F2E9;color:#0F5132; }
+.badge-type.product  { background:#FEF3C7;color:#92400E; }
 </style>
 </head>
 <body>
@@ -101,7 +104,7 @@
 
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-      <span>วัตถุดิบคงเหลือในสต็อก (แยกตามหมวดหมู่)</span>
+      <span>สต็อกคงเหลือ — วัตถุดิบ + สินค้าสำเร็จรูป (แยกตามหมวดหมู่)</span>
       <input type="text" id="stockCatSearch" placeholder="ค้นหา SKU หรือชื่อ..." style="max-width:220px;">
     </div>
     <div id="stockByCategory"></div>
@@ -161,19 +164,21 @@
 (function(){
 
 let allLots = [];       // rm_lots available พร้อม detail (ใช้ทั้ง group และ modal)
-let catalogRows = [];   // สรุปราย SKU (ใช้กรองค้นหา)
+let allFgLots = [];     // fg_lots available พร้อม detail
+let catalogRows = [];   // สรุปราย SKU รวม RM+FG (ใช้กรองค้นหา)
 let openCats = new Set(); // หมวดที่เปิดอยู่ (คงสถานะตอน re-render จากการค้นหา)
 
 async function init() {
   showLoading(true);
   try {
-    const [rmRes, fgRes, roRes, qcRes, catRes, lotDetailRes] = await Promise.all([
+    const [rmRes, fgRes, roRes, qcRes, catRes, lotDetailRes, fgLotDetailRes] = await Promise.all([
       db.from('rm_stock').select('qty_on_hand, rm_lots(status)').eq('rm_lots.status', 'available'),
       db.from('fg_stock').select('qty_on_hand').gt('qty_on_hand', 0),
       db.from('receive_orders').select('id').gte('receive_date', new Date().toISOString().slice(0,10)),
       db.from('rm_lots').select('id, lot_number, initial_qty, unit, receive_date, materials(sku,name), suppliers(name)').eq('status','qc_pending').order('created_at'),
       db.from('categories').select('code,label').eq('is_active',true).order('sort_order'),
       db.from('rm_lots').select('id,lot_number,material_id,receive_date,exp_date,unit,status,rm_stock(qty_on_hand),materials(id,sku,name,category,min_stock),suppliers(name)').eq('status','available'),
+      db.from('fg_lots').select('id,lot_number,product_id,produced_date,exp_date,unit,status,fg_stock(qty_on_hand),products(id,sku,name,category)').eq('status','available'),
     ]);
 
     document.getElementById('s-rmLots').textContent    = (rmRes.data||[]).filter(r=>r.rm_lots?.status==='available').length;
@@ -196,18 +201,28 @@ async function init() {
       </tr>`).join('');
     }
 
-    // ===== เตรียมข้อมูลสต็อกแยกหมวดหมู่ =====
-    allLots = lotDetailRes.data || [];
+    // ===== เตรียมข้อมูลสต็อกแยกหมวดหมู่ (RM + FG) =====
+    allLots   = lotDetailRes.data || [];
+    allFgLots = fgLotDetailRes.data || [];
     const catLabel = Object.fromEntries((catRes.data||[]).map(c=>[c.code,c.label]));
 
     const byMat = {};
     allLots.forEach(l => {
       const id = l.material_id;
-      if (!byMat[id]) byMat[id] = { ...l.materials, total:0, lots:0, unit:l.unit };
+      if (!byMat[id]) byMat[id] = { ...l.materials, total:0, lots:0, unit:l.unit, type:'rm' };
       byMat[id].total += l.rm_stock?.qty_on_hand || 0;
       byMat[id].lots  += 1;
     });
-    catalogRows = Object.values(byMat).sort((a,b)=>(a.sku||'').localeCompare(b.sku||''));
+
+    const byProd = {};
+    allFgLots.forEach(l => {
+      const id = l.product_id;
+      if (!byProd[id]) byProd[id] = { ...l.products, total:0, lots:0, unit:l.unit, type:'fg', min_stock:0 };
+      byProd[id].total += l.fg_stock?.qty_on_hand || 0;
+      byProd[id].lots  += 1;
+    });
+
+    catalogRows = [...Object.values(byMat), ...Object.values(byProd)].sort((a,b)=>(a.sku||'').localeCompare(b.sku||''));
 
     renderStockByCategory(catLabel, '');
     document.getElementById('stockCatSearch').addEventListener('input', e => renderStockByCategory(catLabel, e.target.value));
@@ -265,9 +280,10 @@ function renderStockByCategory(catLabel, search) {
       </button>
       <div class="cat-group-body" style="display:${isOpen?'block':'none'};">
         <table>
-          <thead><tr><th>SKU</th><th>ชื่อ</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th><th style="text-align:center;">Lot</th></tr></thead>
+          <thead><tr><th>ประเภท</th><th>SKU</th><th>ชื่อ</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th><th style="text-align:center;">Lot</th></tr></thead>
           <tbody>
-            ${items.map(m => `<tr class="cat-row" onclick="window.__showSkuDetail('${m.id}')">
+            ${items.map(m => `<tr class="cat-row" onclick="window.__showSkuDetail('${m.id}','${m.type}')">
+              <td>${m.type==='fg'?'<span class="badge-type product">FG</span>':'<span class="badge-type material">RM</span>'}</td>
               <td><code>${m.sku}</code></td>
               <td>${m.name}</td>
               <td style="text-align:right;font-weight:700;color:var(--green-deep);">${fmtQty(m.total)}</td>
@@ -286,26 +302,32 @@ window.__toggleCatGroup = function(cat) {
   renderStockByCategory(window.__lastCatLabel||{}, document.getElementById('stockCatSearch').value);
 };
 
-window.__showSkuDetail = function(materialId) {
-  const cat = catalogRows.find(c => c.id === materialId);
+window.__showSkuDetail = function(itemId, type) {
+  const cat = catalogRows.find(c => c.id === itemId && c.type === type);
   if (!cat) return;
-  document.getElementById('skuModalTitle').textContent = `${cat.sku} — ${cat.name}`;
+  document.getElementById('skuModalTitle').textContent = `${type==='fg'?'[FG] ':''}${cat.sku} — ${cat.name}`;
   document.getElementById('skuModalSub').textContent = `สต็อกรวม ${fmtQty(cat.total)} ${cat.unit} · ${cat.lots} Lot`;
 
-  const lots = allLots.filter(l => l.material_id === materialId);
+  const lots = type==='fg'
+    ? allFgLots.filter(l => l.product_id === itemId)
+    : allLots.filter(l => l.material_id === itemId);
   const body  = document.getElementById('skuModalBody');
   const empty = document.getElementById('skuModalEmpty');
   if (!lots.length) { body.innerHTML=''; empty.style.display='block'; }
   else {
     empty.style.display='none';
-    body.innerHTML = lots.map(l => `<tr>
+    body.innerHTML = lots.map(l => {
+      const dateVal = type==='fg' ? l.produced_date : l.receive_date;
+      const qty = type==='fg' ? (l.fg_stock?.qty_on_hand||0) : (l.rm_stock?.qty_on_hand||0);
+      return `<tr>
       <td><span class="lot-num">${l.lot_number}</span></td>
-      <td>${l.receive_date?fmtDate(l.receive_date):'-'}</td>
+      <td>${dateVal?fmtDate(dateVal):'-'}</td>
       <td>${l.exp_date?fmtDate(l.exp_date):'-'}</td>
-      <td style="text-align:right;font-weight:700;">${fmtQty(l.rm_stock?.qty_on_hand||0)}</td>
+      <td style="text-align:right;font-weight:700;">${fmtQty(qty)}</td>
       <td>${l.unit}</td>
-      <td>${l.suppliers?.name||'-'}</td>
-    </tr>`).join('');
+      <td>${type==='fg' ? '-' : (l.suppliers?.name||'-')}</td>
+    </tr>`;
+    }).join('');
   }
   document.getElementById('skuModal').classList.add('show');
 };
