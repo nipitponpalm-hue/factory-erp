@@ -149,6 +149,39 @@
   </div>
 </div>
 
+<!-- RETURN ITEM MODAL -->
+<div class="modal-overlay" id="returnModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">รับคืนสินค้า</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="returnModalSub"></div>
+      </div>
+      <button class="modal-close" id="returnModalClose">✕</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">คืนสินค้ากลับเข้าสต็อกของ Lot เดิม พร้อมบันทึกเหตุผล (เก็บประวัติการจ่ายเดิมไว้ ไม่ลบ)</p>
+    <input type="hidden" id="returnItemId">
+    <input type="hidden" id="returnLotType">
+    <input type="hidden" id="returnLotId">
+    <div class="field" style="margin-bottom:12px;">
+      <label>จำนวนที่รับคืน * <span id="returnMaxLabel" style="font-weight:400;color:var(--ink-soft);"></span></label>
+      <input type="number" id="returnQty" step="0.01" min="0.01" placeholder="0.00">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>ผู้รับคืน *</label>
+      <input type="text" id="returnOperator" placeholder="ชื่อผู้ดำเนินการ">
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>เหตุผล *</label>
+      <input type="text" id="returnReason" placeholder="เช่น จ่ายผิดจำนวน ลูกค้าส่งคืน">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="returnModalCancelBtn">ปิด</button>
+      <button class="btn btn-primary" id="returnModalConfirmBtn">✓ ยืนยันรับคืน</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -392,7 +425,7 @@ window.showDetail = async function(doId, doNumber){
 
   const [doRes, itemsRes] = await Promise.all([
     db.from('dispatch_orders').select('do_number,dispatch_date,operator,vehicle_no,note,customers(name,contact)').eq('id',doId).single(),
-    db.from('dispatch_items').select('qty,rm_lot_id,fg_lot_id').eq('do_id',doId),
+    db.from('dispatch_items').select('id,qty,rm_lot_id,fg_lot_id,returned_qty,return_reason').eq('do_id',doId),
   ]);
 
   if (!doRes.data){ document.getElementById('detailBody').innerHTML='ไม่พบข้อมูล'; return; }
@@ -414,6 +447,11 @@ window.showDetail = async function(doId, doNumber){
     const isRm = !!it.rm_lot_id;
     const lot  = isRm ? rmMap[it.rm_lot_id] : fgMap[it.fg_lot_id];
     const prod = isRm ? lot?.materials : lot?.products;
+    const returned = it.returned_qty||0;
+    const remaining = it.qty - returned;
+    const returnCell = returned >= it.qty
+      ? `<span style="font-size:11px;color:var(--red);">คืนครบแล้ว${it.return_reason?` (${it.return_reason})`:''}</span>`
+      : `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openReturnItem('${it.id}','${isRm?'rm':'fg'}','${isRm?it.rm_lot_id:it.fg_lot_id}',${remaining},'${lot?.unit||''}','${(prod?.name||'-').replace(/'/g,"")}','${lot?.lot_number||'-'}')">รับคืน</button>${returned>0?`<div style="font-size:10.5px;color:var(--ink-soft);">คืนแล้ว ${fmtQty(returned)}</div>`:''}`;
     return `<tr>
       <td>${isRm?'<span class="lot-badge-rm">RM</span>':'<span class="lot-badge-fg">FG</span>'}</td>
       <td><span class="lot-num">${lot?.lot_number||'-'}</span></td>
@@ -421,6 +459,7 @@ window.showDetail = async function(doId, doNumber){
       <td>${lot?.exp_date?fmtDate(lot.exp_date):'-'}</td>
       <td style="text-align:right;font-weight:700;">${fmtQty(it.qty)}</td>
       <td>${lot?.unit||'-'}</td>
+      <td>${returnCell}</td>
     </tr>`;
   }).join('');
 
@@ -432,9 +471,87 @@ window.showDetail = async function(doId, doNumber){
       ${doRec.vehicle_no?`<b>รถ:</b> ${doRec.vehicle_no} &nbsp;|&nbsp;`:''}
       ${doRec.note?`<b>หมายเหตุ:</b> ${doRec.note}`:''}
     </div>
-    <table><thead><tr><th>ประเภท</th><th>Lot</th><th>สินค้า/วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">ไม่มีรายการ</td></tr>'}</tbody></table>`;
+    <table><thead><tr><th>ประเภท</th><th>Lot</th><th>สินค้า/วัตถุดิบ</th><th>EXP</th><th style="text-align:right;">จำนวน</th><th>หน่วย</th><th>รับคืน</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);">ไม่มีรายการ</td></tr>'}</tbody></table>`;
+  currentDetailDo = { id: doId, number: doNumber };
 };
+
+// ===== RETURN ITEM (คืนสต็อกกลับ Lot เดิม) =====
+let currentDetailDo = null;
+
+window.openReturnItem = function(itemId, lotType, lotId, maxQty, unit, itemName, lotNumber) {
+  document.getElementById('returnItemId').value = itemId;
+  document.getElementById('returnLotType').value = lotType;
+  document.getElementById('returnLotId').value = lotId;
+  document.getElementById('returnModalSub').textContent = `${lotType==='fg'?'[FG] ':'[RM] '}${lotNumber} — ${itemName}`;
+  document.getElementById('returnMaxLabel').textContent = `(สูงสุด ${fmtQty(maxQty)} ${unit})`;
+  document.getElementById('returnQty').value = maxQty;
+  document.getElementById('returnQty').max = maxQty;
+  document.getElementById('returnOperator').value = '';
+  document.getElementById('returnReason').value = '';
+  document.getElementById('returnModal').classList.add('show');
+};
+
+document.getElementById('returnModalClose').addEventListener('click', () => {
+  document.getElementById('returnModal').classList.remove('show');
+});
+document.getElementById('returnModalCancelBtn').addEventListener('click', () => {
+  document.getElementById('returnModal').classList.remove('show');
+});
+
+document.getElementById('returnModalConfirmBtn').addEventListener('click', async () => {
+  const itemId   = document.getElementById('returnItemId').value;
+  const lotType  = document.getElementById('returnLotType').value;
+  const lotId    = document.getElementById('returnLotId').value;
+  const qty      = parseFloat(document.getElementById('returnQty').value);
+  const maxQty   = parseFloat(document.getElementById('returnQty').max);
+  const operator = document.getElementById('returnOperator').value.trim();
+  const reason   = document.getElementById('returnReason').value.trim();
+
+  if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
+  if (qty > maxQty)     { showToast(`จำนวนเกินที่จ่ายไป (สูงสุด ${fmtQty(maxQty)})`, 'error'); return; }
+  if (!operator || !reason) { showToast('กรุณากรอกผู้ดำเนินการและเหตุผล', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const isFg = lotType === 'fg';
+    const lotTable   = isFg ? 'fg_lots' : 'rm_lots';
+    const stockTable = isFg ? 'fg_stock' : 'rm_stock';
+    const stockPk    = isFg ? 'fg_lot_id' : 'lot_id';
+    const txnTable   = isFg ? 'fg_transactions' : 'rm_transactions';
+    const txnLotCol  = isFg ? 'fg_lot_id' : 'lot_id';
+
+    const { data: lot } = await db.from(lotTable).select('status').eq('id',lotId).single();
+    const { data: stock } = await db.from(stockTable).select('qty_on_hand').eq(stockPk,lotId).single();
+    const newQty = (stock?.qty_on_hand||0) + qty;
+    await db.from(stockTable).update({ qty_on_hand:newQty }).eq(stockPk,lotId);
+    if (lot?.status === 'depleted') await db.from(lotTable).update({ status:'available' }).eq('id',lotId);
+
+    await db.from(txnTable).insert({
+      [txnLotCol]: lotId, txn_type:'return', qty,
+      ref_type:'dispatch_returned', operator,
+      note:`รับคืนจากใบจ่าย ${currentDetailDo?.number||''}: ${reason}`,
+    });
+
+    // อัปเดตยอดคืนใน dispatch_items (ไม่ลบ record เดิม)
+    const { data: itemRow } = await db.from('dispatch_items').select('returned_qty').eq('id',itemId).single();
+    await db.from('dispatch_items').update({
+      returned_qty: (itemRow?.returned_qty||0) + qty,
+      return_reason: reason, returned_at: new Date().toISOString(), returned_by: operator,
+    }).eq('id',itemId);
+
+    showToast(`✅ รับคืนสำเร็จ — ${fmtQty(qty)} ${document.getElementById('returnMaxLabel').textContent}`);
+    document.getElementById('returnModal').classList.remove('show');
+    if (currentDetailDo) await window.showDetail(currentDetailDo.id, currentDetailDo.number);
+    await loadRecentDO();
+    await loadMaster();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
 
 (async function init(){
   showLoading(true);
