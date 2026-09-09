@@ -193,6 +193,33 @@
   </div>
 </div>
 
+<!-- VOID QC RESULT MODAL -->
+<div class="modal-overlay" id="voidQcModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">ยกเลิกผล QC</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:3px;" id="voidQcSub"></div>
+      </div>
+      <button class="modal-close" id="voidQcClose">✕</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">รายการนี้ยังไม่ถูกนำไปใช้ต่อ (จ่าย/ผลิต/คัด) จึงยกเลิกได้ — ถ้าผลเดิมคือ "ผ่าน" ระบบจะถอนสต็อกที่เพิ่งเข้าไปคืน แล้วส่งกลับไปรอตรวจใหม่</p>
+    <input type="hidden" id="voidQcRecordId">
+    <div class="field" style="margin-bottom:12px;">
+      <label>ผู้ยกเลิก *</label>
+      <input type="text" id="voidQcOperator" placeholder="ชื่อผู้ยกเลิก">
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>เหตุผล *</label>
+      <input type="text" id="voidQcReason" placeholder="เช่น กดผลผิด ต้องเป็นไม่ผ่าน">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="voidQcCancelBtn">ยกเลิก</button>
+      <button class="btn btn-primary" id="voidQcConfirmBtn" style="background:var(--red);border-color:var(--red);">✓ ยืนยันยกเลิกผล QC</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
@@ -273,7 +300,7 @@ let historyRecords = [];
 async function loadHistory() {
   const { data } = await db
     .from('qc_records')
-    .select('id, inspect_date, result, temp_actual, appearance, operator, note, checklist, chemical_status, chemical_note, rm_lot_id, fg_lot_id, rm_lots(lot_number, materials(name)), fg_lots(lot_number, products(name))')
+    .select('id, inspect_date, result, temp_actual, appearance, operator, note, checklist, chemical_status, chemical_note, rm_lot_id, fg_lot_id, voided_at, void_reason, voided_by, rm_lots(lot_number, materials(name)), fg_lots(lot_number, products(name))')
     .order('created_at', { ascending: false })
     .limit(30);
 
@@ -283,6 +310,23 @@ async function loadHistory() {
   if (!historyRecords.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
 
+  // เช็คว่า lot ไหนถูกนำไปใช้ต่อแล้วบ้าง (จ่าย/ผลิต/คัด) — ถ้าใช้แล้วยกเลิกผล QC ไม่ได้
+  const rmLotIds = [...new Set(historyRecords.filter(r=>r.rm_lot_id).map(r=>r.rm_lot_id))];
+  const fgLotIds = [...new Set(historyRecords.filter(r=>r.fg_lot_id).map(r=>r.fg_lot_id))];
+  const usedLotIds = new Set();
+  const [dispRm, dispFg, prodRmIn, prodFgIn, repackIn] = await Promise.all([
+    rmLotIds.length ? db.from('dispatch_items').select('rm_lot_id').in('rm_lot_id', rmLotIds) : Promise.resolve({data:[]}),
+    fgLotIds.length ? db.from('dispatch_items').select('fg_lot_id').in('fg_lot_id', fgLotIds) : Promise.resolve({data:[]}),
+    rmLotIds.length ? db.from('production_inputs').select('lot_id').in('lot_id', rmLotIds) : Promise.resolve({data:[]}),
+    fgLotIds.length ? db.from('production_inputs').select('fg_lot_id').in('fg_lot_id', fgLotIds) : Promise.resolve({data:[]}),
+    rmLotIds.length ? db.from('repack_inputs').select('lot_id').in('lot_id', rmLotIds) : Promise.resolve({data:[]}),
+  ]);
+  (dispRm.data||[]).forEach(r=>usedLotIds.add(r.rm_lot_id));
+  (dispFg.data||[]).forEach(r=>usedLotIds.add(r.fg_lot_id));
+  (prodRmIn.data||[]).forEach(r=>usedLotIds.add(r.lot_id));
+  (prodFgIn.data||[]).forEach(r=>usedLotIds.add(r.fg_lot_id));
+  (repackIn.data||[]).forEach(r=>usedLotIds.add(r.lot_id));
+
   const resultLabel = { passed:'✅ ผ่าน', failed:'❌ ไม่ผ่าน', on_hold:'⏸ พักไว้' };
   const resultClass = { passed:'s-available', failed:'s-on_hold', on_hold:'s-pending' };
 
@@ -290,19 +334,26 @@ async function loadHistory() {
     const issues = Object.entries(r.checklist||{}).filter(([k,v])=>v===false).map(([k])=>QC_ISSUE_LABEL[k]||k);
     const chem = r.chemical_status || 'pending';
     const isFg = !!r.fg_lot_id;
+    const lotId = isFg ? r.fg_lot_id : r.rm_lot_id;
     const lotNum = isFg ? r.fg_lots?.lot_number : r.rm_lots?.lot_number;
     const itemName = isFg ? r.fg_lots?.products?.name : r.rm_lots?.materials?.name;
-    return `<tr>
+    const isVoided = !!r.voided_at;
+    const canVoid = !isVoided && !usedLotIds.has(lotId);
+    const rowStyle = isVoided ? 'opacity:.55;' : '';
+    return `<tr style="${rowStyle}">
     <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.inspect_date)}</td>
     <td><span class="lot-num">${lotNum||'-'}</span></td>
     <td>${isFg?'<span class="badge-type product" style="background:#FEF3C7;color:#92400E;display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;">FG</span> ':''}${itemName||'-'}</td>
-    <td><span class="status-badge ${resultClass[r.result]||''}">${resultLabel[r.result]||r.result}</span></td>
+    <td><span class="status-badge ${resultClass[r.result]||''}">${resultLabel[r.result]||r.result}</span>${isVoided?' <span style="font-size:10px;color:var(--red);font-weight:700;">(ยกเลิกแล้ว)</span>':''}</td>
     <td>${r.temp_actual!=null ? r.temp_actual+'°C' : '-'}</td>
     <td>${issues.length ? issues.map(i=>`<span class="qc-issue-chip">${i}</span>`).join('') : '<span style="color:var(--ink-soft);font-size:12px;">-</span>'}</td>
     <td><span class="status-badge ${CHEM_CLASS[chem]}">${CHEM_LABEL[chem]}</span></td>
     <td>${r.operator}</td>
-    <td style="font-size:12.5px;color:var(--ink-soft);">${r.note||'-'}</td>
-    <td><button class="btn btn-ghost btn-sm" onclick="openChemEdit('${r.id}')">แก้ผลเคมี</button></td>
+    <td style="font-size:12.5px;color:var(--ink-soft);">${isVoided?`ยกเลิกโดย ${r.voided_by||'-'}: ${r.void_reason||'-'}`:(r.note||'-')}</td>
+    <td style="white-space:nowrap;">
+      ${isVoided ? '' : `<button class="btn btn-ghost btn-sm" onclick="openChemEdit('${r.id}')">แก้ผลเคมี</button>`}
+      ${canVoid ? `<button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openVoidQc('${r.id}')">ยกเลิกผล QC</button>` : ''}
+    </td>
   </tr>`;
   }).join('');
 }
@@ -498,9 +549,81 @@ document.getElementById('chemSaveBtn').addEventListener('click', async () => {
   }
 });
 
+// ===== VOID QC RESULT (ยกเลิกผล QC ที่กดผิด — เฉพาะรายการที่ยังไม่ถูกใช้ต่อ) =====
+function openVoidQc(recordId) {
+  const rec = historyRecords.find(r => r.id === recordId);
+  if (!rec) return;
+  const isFg = !!rec.fg_lot_id;
+  const lotNum = isFg ? rec.fg_lots?.lot_number : rec.rm_lots?.lot_number;
+  document.getElementById('voidQcRecordId').value = recordId;
+  document.getElementById('voidQcSub').textContent = `${isFg?'[FG] ':''}${lotNum||'-'}`;
+  document.getElementById('voidQcOperator').value = '';
+  document.getElementById('voidQcReason').value = '';
+  document.getElementById('voidQcModal').classList.add('show');
+}
+
+document.getElementById('voidQcClose').addEventListener('click', () => {
+  document.getElementById('voidQcModal').classList.remove('show');
+});
+document.getElementById('voidQcCancelBtn').addEventListener('click', () => {
+  document.getElementById('voidQcModal').classList.remove('show');
+});
+
+document.getElementById('voidQcConfirmBtn').addEventListener('click', async () => {
+  const recordId = document.getElementById('voidQcRecordId').value;
+  const rec = historyRecords.find(r => r.id === recordId);
+  const operator = document.getElementById('voidQcOperator').value.trim();
+  const reason   = document.getElementById('voidQcReason').value.trim();
+  if (!rec) return;
+  if (!operator || !reason) { showToast('กรุณากรอกผู้ยกเลิกและเหตุผล', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const isFg = !!rec.fg_lot_id;
+    const lotId = isFg ? rec.fg_lot_id : rec.rm_lot_id;
+    const lotTable   = isFg ? 'fg_lots' : 'rm_lots';
+    const stockTable = isFg ? 'fg_stock' : 'rm_stock';
+    const stockPk    = isFg ? 'fg_lot_id' : 'lot_id';
+    const txnTable   = isFg ? 'fg_transactions' : 'rm_transactions';
+    const txnLotCol  = isFg ? 'fg_lot_id' : 'lot_id';
+    const txnType    = isFg ? 'adjust' : 'adjust';
+
+    // ถ้าผลเดิมคือ "ผ่าน" แปลว่าสต็อกเข้าไปแล้ว ต้องถอนคืนก่อน
+    if (rec.result === 'passed') {
+      const { data: lotRow } = await db.from(lotTable).select('initial_qty').eq('id', lotId).single();
+      const qtyToReverse = lotRow?.initial_qty || 0;
+      await db.from(stockTable).update({ qty_on_hand: 0 }).eq(stockPk, lotId);
+      await db.from(txnTable).insert({
+        [txnLotCol]: lotId, txn_type: txnType, qty: -qtyToReverse,
+        ref_type: 'qc_voided', operator,
+        note: `ยกเลิกผล QC (เดิม: ผ่าน) — ${reason}`,
+      });
+    }
+
+    // ส่ง lot กลับไปรอ QC ใหม่
+    await db.from(lotTable).update({ status: 'qc_pending' }).eq('id', lotId);
+
+    // mark qc_record เดิมว่ายกเลิกแล้ว (เก็บประวัติไว้ ไม่ลบ)
+    const { error } = await db.from('qc_records').update({
+      voided_at: new Date().toISOString(), void_reason: reason, voided_by: operator,
+    }).eq('id', recordId);
+    if (error) throw error;
+
+    showToast('ยกเลิกผล QC สำเร็จ — รายการกลับไปรอตรวจใหม่แล้ว');
+    document.getElementById('voidQcModal').classList.remove('show');
+    await loadData();
+  } catch(e) {
+    console.error(e);
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
+
 window.openQC       = openQC;
 window.submitQC     = submitQC;
 window.openChemEdit = openChemEdit;
+window.openVoidQc   = openVoidQc;
 
 // ===== INIT =====
 (async function init() {
