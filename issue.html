@@ -254,7 +254,7 @@ function renderFifoPlan() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <label style="margin:0;white-space:nowrap;">จำนวนเบิก</label>
-        <input type="number" step="0.01" min="0" max="${row.qty_on_hand}"
+        <input type="number" step="0.01" min="0" max="${roundQty(row.qty_on_hand)}"
           value="${row.qty}" data-original="${row.qty}" data-idx="${i}"
           style="width:110px;" class="fifo-qty-input"
           onchange="onFifoQtyChange(${i}, this)">
@@ -401,7 +401,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       if (iiErr) throw iiErr;
 
       // หัก rm_stock
-      const newQty = item.qty_on_hand - item.qty_issued;
+      const newQty = roundQty(item.qty_on_hand - item.qty_issued);
       const { error: stErr } = await db.from('rm_stock')
         .update({ qty_on_hand: Math.max(0, newQty), updated_at: new Date().toISOString() })
         .eq('lot_id', item.lot_id);

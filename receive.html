@@ -765,7 +765,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         const poItem = matchPoItem();
         if (poItem) {
           // ตัดยอด PO ไม่เกินจำนวนสั่ง (ส่วนเกินเข้าสต็อกแล้วผ่าน qty)
-          const newReceived = Math.min(poItem.qty_received + qtyToStock, poItem.qty_ordered);
+          const newReceived = roundQty(Math.min(poItem.qty_received + qtyToStock, poItem.qty_ordered));
           await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
         }
       }
@@ -986,7 +986,7 @@ document.getElementById('roDetailSaveBtn').addEventListener('click', async () =>
         const { data: poItem } = await db.from('po_items').select('id,qty_ordered,qty_received').eq('po_id', detailRO.po_id).eq(poFilterCol, poFilterVal).single();
         if (poItem) {
           const oldApplied = Math.min(item.qty, poItem.qty_ordered); // ประมาณจากยอดเดิม
-          const newReceived = Math.min(Math.max(0, poItem.qty_received - oldApplied) + newQty, poItem.qty_ordered);
+          const newReceived = roundQty(Math.min(Math.max(0, poItem.qty_received - oldApplied) + newQty, poItem.qty_ordered));
           await db.from('po_items').update({ qty_received: newReceived }).eq('id', poItem.id);
         }
       }

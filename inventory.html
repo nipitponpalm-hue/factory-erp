@@ -561,7 +561,7 @@ document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
   const note      = document.getElementById('adjNote').value.trim() || null;
 
   if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
-  if (isOut && qty > onHand) { showToast(`จำนวนเกินคงเหลือ (${fmtQty(onHand)} ${adjLot.unit})`, 'error'); return; }
+  if (isOut && qtyExceeds(qty,onHand)) { showToast(`จำนวนเกินคงเหลือ (${fmtQty(onHand)} ${adjLot.unit})`, 'error'); return; }
   if (!reason)          { showToast('กรุณาเลือกเหตุผล', 'error'); return; }
   if (!operator)        { showToast('กรุณาระบุผู้ดำเนินการ', 'error'); return; }
 
@@ -578,7 +578,7 @@ document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
     });
     if (adjErr) throw adjErr;
 
-    const newQty = isOut ? (onHand - qty) : (onHand + qty);
+    const newQty = isOut ? Math.max(0, roundQty(onHand - qty)) : roundQty(onHand + qty);
     const actionLabel = isOut ? 'ตัดสต็อก' : 'เพิ่มสต็อก';
     const txnQty = isOut ? -qty : qty;
 

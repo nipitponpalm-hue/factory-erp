@@ -311,7 +311,7 @@ function renderCart() {
     <td>${it.exp_date?fmtDate(it.exp_date):'-'}</td>
     <td style="text-align:right;color:var(--green-deep);">${fmtQty(it.qty_on_hand)}</td>
     <td style="text-align:right;">
-      <input type="number" step="0.01" min="0.01" max="${it.qty_on_hand}"
+      <input type="number" step="0.01" min="0.01" max="${roundQty(it.qty_on_hand)}"
         value="${it.qty_dispatch||''}" placeholder="0.00"
         style="width:110px;text-align:right;"
         oninput="updateQty(${i},this.value)">
@@ -330,7 +330,7 @@ function checkConfirm(){
   const ok=document.getElementById('cusId').value
     && document.getElementById('oprInput').value.trim()
     && cart.length>0
-    && cart.every(it=>it.qty_dispatch>0 && it.qty_dispatch<=it.qty_on_hand);
+    && cart.every(it=>it.qty_dispatch>0 && !qtyExceeds(it.qty_dispatch,it.qty_on_hand));
   document.getElementById('confirmBtn').disabled=!ok;
 }
 
@@ -359,7 +359,7 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
       if (item.type==='rm') {
         // จ่าย RM ตรง (คัดสวย ขายเลย)
         await db.from('dispatch_items').insert({ do_id:doRec.id, rm_lot_id:item.id, fg_lot_id:null, qty:item.qty_dispatch, unit:item.unit });
-        const newQty=item.qty_on_hand-item.qty_dispatch;
+        const newQty=roundQty(item.qty_on_hand-item.qty_dispatch);
         await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('lot_id',item.id);
         if (newQty<=0) await db.from('rm_lots').update({status:'depleted'}).eq('id',item.id);
         await db.from('rm_transactions').insert({
@@ -370,7 +370,7 @@ document.getElementById('confirmBtn').addEventListener('click', async()=>{
       } else {
         // จ่าย FG (แปรรูปแล้ว)
         await db.from('dispatch_items').insert({ do_id:doRec.id, fg_lot_id:item.id, rm_lot_id:null, qty:item.qty_dispatch, unit:item.unit });
-        const newQty=item.qty_on_hand-item.qty_dispatch;
+        const newQty=roundQty(item.qty_on_hand-item.qty_dispatch);
         await db.from('fg_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('fg_lot_id',item.id);
         if (newQty<=0) await db.from('fg_lots').update({status:'depleted'}).eq('id',item.id);
         await db.from('fg_transactions').insert({
@@ -509,7 +509,7 @@ document.getElementById('returnModalConfirmBtn').addEventListener('click', async
   const reason   = document.getElementById('returnReason').value.trim();
 
   if (!qty || qty <= 0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
-  if (qty > maxQty)     { showToast(`จำนวนเกินที่จ่ายไป (สูงสุด ${fmtQty(maxQty)})`, 'error'); return; }
+  if (qtyExceeds(qty,maxQty)) { showToast(`จำนวนเกินที่จ่ายไป (สูงสุด ${fmtQty(maxQty)})`, 'error'); return; }
   if (!operator || !reason) { showToast('กรุณากรอกผู้ดำเนินการและเหตุผล', 'error'); return; }
 
   showLoading(true);
@@ -523,7 +523,7 @@ document.getElementById('returnModalConfirmBtn').addEventListener('click', async
 
     const { data: lot } = await db.from(lotTable).select('status').eq('id',lotId).single();
     const { data: stock } = await db.from(stockTable).select('qty_on_hand').eq(stockPk,lotId).single();
-    const newQty = (stock?.qty_on_hand||0) + qty;
+    const newQty = roundQty((stock?.qty_on_hand||0) + qty);
     await db.from(stockTable).update({ qty_on_hand:newQty }).eq(stockPk,lotId);
     if (lot?.status === 'depleted') await db.from(lotTable).update({ status:'available' }).eq('id',lotId);
 
@@ -536,7 +536,7 @@ document.getElementById('returnModalConfirmBtn').addEventListener('click', async
     // อัปเดตยอดคืนใน dispatch_items (ไม่ลบ record เดิม)
     const { data: itemRow } = await db.from('dispatch_items').select('returned_qty').eq('id',itemId).single();
     await db.from('dispatch_items').update({
-      returned_qty: (itemRow?.returned_qty||0) + qty,
+      returned_qty: roundQty((itemRow?.returned_qty||0) + qty),
       return_reason: reason, returned_at: new Date().toISOString(), returned_by: operator,
     }).eq('id',itemId);
 

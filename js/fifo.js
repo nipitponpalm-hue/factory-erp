@@ -30,5 +30,5 @@ async function suggestFifo(materialId, qtyNeeded) {
     remaining -= take;
   }
 
-  return { plan, shortage: Math.max(0, remaining) };
+  return { plan, shortage: roundQty(Math.max(0, remaining)) };
 }

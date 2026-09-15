@@ -19,6 +19,18 @@ function fmtQty(n) {
   return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
 }
 
+// ปัดเศษจำนวนสต็อกก่อนบันทึกลง DB — กัน floating point คลาดเคลื่อนสะสม
+// (เช่น 0.3 - 0.25 ใน JS ได้ 0.04999999999999999 ไม่ใช่ 0.05 พอดี ถ้าไม่ปัด ค่าที่คลาดเคลื่อนนี้จะถูกบันทึกจริงและสะสมไปเรื่อยๆ)
+function roundQty(n, dp = 3) {
+  const f = 10 ** dp;
+  return Math.round((Number(n) + Number.EPSILON) * f) / f;
+}
+
+// เทียบว่า qty ที่ขอเกินจำนวนคงเหลือจริงหรือไม่ โดยยอมรับความคลาดเคลื่อนเล็กน้อยจาก floating point
+function qtyExceeds(requested, available, eps = 1e-6) {
+  return Number(requested) > Number(available) + eps;
+}
+
 function toLocalInput(d = new Date()) {
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;

@@ -590,7 +590,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         await db.from('production_inputs').insert({ po_id:po.id, fg_lot_id:rm.lot_id, qty_used:rm.qty_used, unit:rm.unit });
 
         // หัก fg_stock
-        const newQty = rm.qty_on_hand - rm.qty_used;
+        const newQty = roundQty(rm.qty_on_hand - rm.qty_used);
         await db.from('fg_stock').update({ qty_on_hand:Math.max(0,newQty) }).eq('fg_lot_id',rm.lot_id);
         if (newQty <= 0) await db.from('fg_lots').update({status:'depleted'}).eq('id',rm.lot_id);
 
@@ -603,7 +603,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         await db.from('production_inputs').insert({ po_id:po.id, lot_id:rm.lot_id, qty_used:rm.qty_used, unit:rm.unit });
 
         // หัก rm_stock
-        const newQty = rm.qty_on_hand - rm.qty_used;
+        const newQty = roundQty(rm.qty_on_hand - rm.qty_used);
         await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty), updated_at:new Date().toISOString() }).eq('lot_id',rm.lot_id);
         if (newQty <= 0) await db.from('rm_lots').update({status:'depleted'}).eq('id',rm.lot_id);
 
@@ -802,14 +802,14 @@ document.getElementById('cancelOrderConfirmBtn').addEventListener('click', async
         if (inp.fg_lot_id) {
           const { data: srcLot } = await db.from('fg_lots').select('id,status').eq('id',inp.fg_lot_id).single();
           const { data: srcStock } = await db.from('fg_stock').select('qty_on_hand').eq('fg_lot_id',inp.fg_lot_id).single();
-          const newQty = (srcStock?.qty_on_hand||0) + inp.qty_used;
+          const newQty = roundQty((srcStock?.qty_on_hand||0) + inp.qty_used);
           await db.from('fg_stock').update({ qty_on_hand:newQty }).eq('fg_lot_id',inp.fg_lot_id);
           if (srcLot?.status==='depleted') await db.from('fg_lots').update({status:'available'}).eq('id',inp.fg_lot_id);
           await db.from('fg_transactions').insert({ fg_lot_id:inp.fg_lot_id, txn_type:'adjust', qty:inp.qty_used, ref_type:'production_cancelled', operator, note:`คืนสต็อก — ยกเลิกใบผลิต ${order?.po_number||''}: ${reason}` });
         } else if (inp.lot_id) {
           const { data: srcLot } = await db.from('rm_lots').select('id,status').eq('id',inp.lot_id).single();
           const { data: srcStock } = await db.from('rm_stock').select('qty_on_hand').eq('lot_id',inp.lot_id).single();
-          const newQty = (srcStock?.qty_on_hand||0) + inp.qty_used;
+          const newQty = roundQty((srcStock?.qty_on_hand||0) + inp.qty_used);
           await db.from('rm_stock').update({ qty_on_hand:newQty, updated_at:new Date().toISOString() }).eq('lot_id',inp.lot_id);
           if (srcLot?.status==='depleted') await db.from('rm_lots').update({status:'available'}).eq('id',inp.lot_id);
           await db.from('rm_transactions').insert({ lot_id:inp.lot_id, txn_type:'adjust', qty:inp.qty_used, ref_type:'production_cancelled', operator, note:`คืนสต็อก — ยกเลิกใบผลิต ${order?.po_number||''}: ${reason}` });
@@ -1096,7 +1096,7 @@ window.switchTab = function(tab) {
       // 3. repack_inputs + หัก rm_stock
       for (const rm of rpInputs) {
         await db.from('repack_inputs').insert({ rp_id:rpo.id, lot_id:rm.lot_id, qty_used:rm.qty_used, unit:rm.unit });
-        const newQty = rm.qty_on_hand - rm.qty_used;
+        const newQty = roundQty(rm.qty_on_hand - rm.qty_used);
         await db.from('rm_stock').update({ qty_on_hand:Math.max(0,newQty), updated_at:new Date().toISOString() }).eq('lot_id',rm.lot_id);
         if (newQty<=0) await db.from('rm_lots').update({status:'depleted'}).eq('id',rm.lot_id);
         await db.from('rm_transactions').insert({
