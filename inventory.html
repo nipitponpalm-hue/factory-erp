@@ -180,7 +180,7 @@
     </div>
     <div class="table-wrap">
       <table style="font-size:13px;">
-        <thead><tr><th>Lot</th><th>วันที่</th><th>EXP</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th><th>สถานะ</th></tr></thead>
+        <thead><tr><th>Lot</th><th>วันที่</th><th>EXP</th><th style="text-align:right;">คงเหลือ</th><th>หน่วย</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="skuModalBody"></tbody>
       </table>
     </div>
@@ -356,15 +356,17 @@ document.getElementById('catalogSearch').addEventListener('input', e => renderSu
 function showSkuDetail(type, sku) {
   const cat = catalogRows.find(c => c.type===type && c.sku===sku);
   if (!cat) return;
+  currentSkuDetail = { type, sku };
   document.getElementById('skuModalTitle').textContent = `${sku} — ${cat.name}`;
   document.getElementById('skuModalSub').textContent = `${type==='fg'?'สินค้าสำเร็จรูป':'วัตถุดิบ'} · สต็อกรวม ${fmtQty(cat.total)} ${cat.unit} · ${cat.lots} Lot`;
 
   const statusLabel = { available:'Available', qc_pending:'รอ QC', on_hold:'On Hold', depleted:'หมด', expired:'ตีคืน' };
   const statusCls   = { available:'s-available', qc_pending:'s-qc_pending', on_hold:'s-on_hold', depleted:'s-depleted', expired:'s-on_hold' };
 
+  // เอาทุก lot ที่ยังมีสต็อกเหลือ (ไม่ใช่เฉพาะ available — on_hold ที่ยังเหลือของก็ต้องปรับสต็อกได้)
   const lots = type==='fg'
-    ? allFgLots.filter(l => l.status==='available' && l.products?.sku===sku)
-    : allLots.filter(l => l.status==='available' && l.materials?.sku===sku);
+    ? allFgLots.filter(l => (l.fg_stock?.qty_on_hand||0) > 0 && l.products?.sku===sku)
+    : allLots.filter(l => (l.rm_stock?.qty_on_hand||0) > 0 && l.materials?.sku===sku);
 
   const body  = document.getElementById('skuModalBody');
   const empty = document.getElementById('skuModalEmpty');
@@ -381,6 +383,7 @@ function showSkuDetail(type, sku) {
         <td style="text-align:right;font-weight:700;">${fmtQty(qty)}</td>
         <td>${l.unit}</td>
         <td><span class="status-badge ${statusCls[l.status]||''}">${statusLabel[l.status]||l.status}</span></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openAdjModal('${l.id}','${type}')">ปรับสต็อก</button></td>
       </tr>`;
     }).join('');
   }
@@ -507,6 +510,7 @@ window.showLotDetail = showLotDetail;
 // ===== STOCK ADJUSTMENT (RM หรือ FG — ลด หรือ เพิ่ม) =====
 let adjLot = null;
 let adjLotType = 'rm';
+let currentSkuDetail = null;
 
 const ADJ_REASON_OUT = { giveaway:'มอบให้/ของแถม', spoilage:'เน่าเสีย', lost:'สูญหาย', other:'อื่นๆ' };
 const ADJ_REASON_IN  = { correction:'แก้ไขข้อมูลผิดพลาด', found:'นับเจอเพิ่มจากที่บันทึกไว้', returned:'ลูกค้าคืน (นอกระบบจ่ายสินค้า)', other:'อื่นๆ' };
@@ -610,6 +614,10 @@ document.getElementById('adjConfirmBtn').addEventListener('click', async () => {
     document.getElementById('adjModal').classList.remove('show');
     adjLot = null;
     await loadAll();
+    // ถ้าปรับสต็อกจาก modal รายละเอียด SKU ให้รีเฟรชรายการ lot ในนั้นด้วย
+    if (currentSkuDetail && document.getElementById('skuModal').classList.contains('show')) {
+      showSkuDetail(currentSkuDetail.type, currentSkuDetail.sku);
+    }
   } catch(e) {
     console.error(e);
     showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
