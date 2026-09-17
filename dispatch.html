@@ -97,16 +97,27 @@
     </div>
     <div class="row" style="margin-bottom:8px;">
       <div class="field-lg">
-        <label>ค้นหา Lot</label>
-        <input type="text" id="stockSearch" placeholder="พิมพ์ Lot number, ชื่อสินค้า, หรือ SKU..." style="width:100%;">
+        <label>เลือก Lot</label>
+        <div class="combo" id="stockComboWrap">
+          <input type="text" id="stockInput" placeholder="พิมพ์ Lot number, ชื่อสินค้า, หรือ SKU..." autocomplete="off">
+          <div class="combo-list" id="stockComboList"></div>
+        </div>
+        <input type="hidden" id="stockSelId">
       </div>
-      <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px;">
-        <button class="btn btn-ghost btn-sm" id="filterAll" onclick="setFilter('all')" style="font-weight:700;">ทั้งหมด</button>
-        <button class="btn btn-ghost btn-sm" id="filterRm" onclick="setFilter('rm')">RM เท่านั้น</button>
-        <button class="btn btn-ghost btn-sm" id="filterFg" onclick="setFilter('fg')">FG เท่านั้น</button>
+      <div class="field">
+        <label>จำนวนจ่าย</label>
+        <input type="number" id="stockQty" step="0.01" min="0.01" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div style="padding-bottom:2px;">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" id="addStockBtn">+ เพิ่ม</button>
       </div>
     </div>
-    <div id="stockList" style="max-height:360px;overflow-y:auto;"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-ghost btn-sm" id="filterAll" onclick="setFilter('all')" style="font-weight:700;">ทั้งหมด</button>
+      <button class="btn btn-ghost btn-sm" id="filterRm" onclick="setFilter('rm')">RM เท่านั้น</button>
+      <button class="btn btn-ghost btn-sm" id="filterFg" onclick="setFilter('fg')">FG เท่านั้น</button>
+    </div>
   </div>
 
   <!-- STEP 3 -->
@@ -221,7 +232,6 @@ async function loadMaster() {
     .map(l=>({ type:'fg', id:l.id, lot_number:l.lot_number, name:l.products?.name||'-', sku:l.products?.sku||'-', unit:l.unit, qty_on_hand:l.fg_stock.qty_on_hand, exp_date:l.exp_date||null, po_id:l.po_id||null, produced_date:l.produced_date||null }));
 
   allStock = [...rmStock, ...fgStock];
-  renderStockList('');
 }
 
 // ===== COMBOS =====
@@ -246,59 +256,61 @@ window.setFilter = function(mode) {
   ['all','rm','fg'].forEach(m=>{
     document.getElementById(`filter${m.charAt(0).toUpperCase()+m.slice(1)}`).classList.toggle('active', m===mode);
   });
-  renderStockList(document.getElementById('stockSearch').value);
 };
 // init active state
 document.getElementById('filterAll').classList.add('active');
 
-document.getElementById('stockSearch').addEventListener('input', e=>renderStockList(e.target.value));
+// ===== เลือก Lot ทีละแถว: พิมพ์ค้นหา → เลือก (Enter/คลิก) → กรอกจำนวน → Enter เพิ่มแถวแล้วพร้อมพิมพ์แถวถัดไปทันที =====
+let stockSelected = null;
 
-// ===== STOCK LIST =====
-function renderStockList(q) {
-  q=(q||'').toLowerCase();
-  let list = allStock;
-  if (filterMode==='rm') list=list.filter(l=>l.type==='rm');
-  if (filterMode==='fg') list=list.filter(l=>l.type==='fg');
-  if (q) list=list.filter(l=>l.lot_number.toLowerCase().includes(q)||l.name.toLowerCase().includes(q)||l.sku.toLowerCase().includes(q));
-
-  const wrap=document.getElementById('stockList');
-  if (!list.length){ wrap.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink-soft);font-size:13px;">ไม่มีสต็อก</div>'; return; }
-
-  wrap.innerHTML=list.map(l=>{
-    const inCart=cart.find(c=>c.id===l.id);
-    const badge=l.type==='rm'?'<span class="lot-badge-rm">RM</span>':'<span class="lot-badge-fg">FG</span>';
-    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1.5px solid ${inCart?'var(--green-deep)':'var(--line)'};">
-      <div style="flex:1;">
-        ${badge}<span class="lot-num">${l.lot_number}</span>
-        <span style="font-size:13px;font-weight:600;margin-left:6px;">${l.name}</span>
-        <span style="font-size:11.5px;color:var(--ink-soft);margin-left:4px;">(${l.sku})</span><br>
-        <span style="font-size:12px;color:var(--green-deep);margin-top:2px;display:inline-block;">สต็อก: ${fmtQty(l.qty_on_hand)} ${l.unit}</span>
-        ${l.grade?`<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">เกรด ${l.grade}</span>`:''}
-        ${l.type==='rm' ? lotOriginBadgeRM(l) : lotOriginBadgeFG(l)}
-        ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:8px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
-        ${inCart?`<span style="font-size:11px;color:var(--green-deep);font-weight:700;margin-left:8px;">✓ อยู่ในรายการ</span>`:''}
-      </div>
-      ${!inCart
-        ?`<button class="btn btn-primary btn-sm" onclick="addToCart('${l.id}')">+ เลือก</button>`
-        :`<button class="btn btn-ghost btn-sm" onclick="removeFromCartById('${l.id}')">ลบออก</button>`}
+setupCombo({
+  inputEl: document.getElementById('stockInput'),
+  listEl:  document.getElementById('stockComboList'),
+  getItems(q) {
+    q=(q||'').toLowerCase();
+    let list = allStock.filter(l=>!cart.find(c=>c.id===l.id));
+    if (filterMode==='rm') list=list.filter(l=>l.type==='rm');
+    if (filterMode==='fg') list=list.filter(l=>l.type==='fg');
+    if (q) list=list.filter(l=>l.lot_number.toLowerCase().includes(q)||l.name.toLowerCase().includes(q)||l.sku.toLowerCase().includes(q));
+    return list.slice(0,40);
+  },
+  renderItem: (l,i) => {
+    const badge = l.type==='rm' ? '<span class="lot-badge-rm">RM</span>' : '<span class="lot-badge-fg">FG</span>';
+    const origin = l.type==='rm' ? lotOriginBadgeRM(l) : lotOriginBadgeFG(l);
+    return `<div class="combo-item" data-idx="${i}">
+      <span>${badge}<span class="lot-num">${l.lot_number}</span> ${l.name} <span style="color:var(--ink-soft);font-size:12px;">(${l.sku})</span>${origin}</span>
+      <span style="font-size:12px;color:var(--green-deep);white-space:nowrap;">${fmtQty(l.qty_on_hand)} ${l.unit}</span>
     </div>`;
-  }).join('');
+  },
+  onQueryChange() { stockSelected=null; document.getElementById('stockSelId').value=''; },
+  onSelect(l) {
+    stockSelected=l;
+    document.getElementById('stockInput').value=`${l.lot_number} — ${l.name}`;
+    document.getElementById('stockSelId').value=l.id;
+    const qtyInp = document.getElementById('stockQty');
+    qtyInp.value = l.qty_on_hand;
+    qtyInp.focus();
+    qtyInp.select();
+  }
+});
+
+function addStockRow() {
+  if (!stockSelected) { showToast('กรุณาเลือก Lot', 'error'); return; }
+  const qty = parseFloat(document.getElementById('stockQty').value);
+  if (!qty || qty<=0) { showToast('กรุณาระบุจำนวน', 'error'); return; }
+  if (qtyExceeds(qty, stockSelected.qty_on_hand)) { showToast(`จำนวนเกินสต็อกคงเหลือ (${fmtQty(stockSelected.qty_on_hand)} ${stockSelected.unit})`, 'error'); return; }
+  cart.push({ ...stockSelected, qty_dispatch:qty });
+  renderCart();
+  document.getElementById('stockInput').value='';
+  document.getElementById('stockSelId').value='';
+  document.getElementById('stockQty').value='';
+  stockSelected=null;
+  document.getElementById('stockInput').focus();
 }
-
-// ===== CART =====
-window.addToCart = function(id) {
-  const item=allStock.find(l=>l.id===id);
-  if (!item||cart.find(c=>c.id===id)) return;
-  cart.push({...item, qty_dispatch:0});
-  renderCart();
-  renderStockList(document.getElementById('stockSearch').value);
-};
-
-window.removeFromCartById = function(id) {
-  cart=cart.filter(c=>c.id!==id);
-  renderCart();
-  renderStockList(document.getElementById('stockSearch').value);
-};
+document.getElementById('addStockBtn').addEventListener('click', addStockRow);
+document.getElementById('stockQty').addEventListener('keydown', e => {
+  if (e.key==='Enter') { e.preventDefault(); addStockRow(); }
+});
 
 function renderCart() {
   const body=document.getElementById('cartBody');
@@ -308,7 +320,7 @@ function renderCart() {
   body.innerHTML=cart.map((it,i)=>`<tr>
     <td>${it.type==='rm'?'<span class="lot-badge-rm">RM</span>':'<span class="lot-badge-fg">FG</span>'}</td>
     <td><span class="lot-num">${it.lot_number}</span></td>
-    <td>${it.name} <span style="font-size:11px;color:var(--ink-soft);">(${it.sku})</span></td>
+    <td>${it.name} <span style="font-size:11px;color:var(--ink-soft);">(${it.sku})</span>${it.type==='rm'?lotOriginBadgeRM(it):lotOriginBadgeFG(it)}</td>
     <td>${it.exp_date?fmtDate(it.exp_date):'-'}</td>
     <td style="text-align:right;color:var(--green-deep);">${fmtQty(it.qty_on_hand)}</td>
     <td style="text-align:right;">
@@ -324,8 +336,8 @@ function renderCart() {
 }
 
 window.updateQty  = function(i,v){ cart[i].qty_dispatch=parseFloat(v)||0; checkConfirm(); };
-window.removeItem = function(i){ cart.splice(i,1); renderCart(); renderStockList(document.getElementById('stockSearch').value); };
-document.getElementById('clearBtn').addEventListener('click',()=>{ cart=[]; renderCart(); renderStockList(''); });
+window.removeItem = function(i){ cart.splice(i,1); renderCart(); };
+document.getElementById('clearBtn').addEventListener('click',()=>{ cart=[]; renderCart(); });
 
 function checkConfirm(){
   const ok=document.getElementById('cusId').value
