@@ -206,7 +206,7 @@ async function loadMaster() {
       .select('id,lot_number,exp_date,receive_date,unit,grade,is_processed,rm_stock(qty_on_hand),materials(sku,name)')
       .eq('status','available').order('receive_date',{ascending:true}),
     db.from('fg_lots')
-      .select('id,lot_number,exp_date,produced_date,unit,fg_stock(qty_on_hand),products(sku,name)')
+      .select('id,lot_number,exp_date,produced_date,unit,po_id,fg_stock(qty_on_hand),products(sku,name)')
       .eq('status','available').order('produced_date',{ascending:true}),
   ]);
   customers = cusRes.data||[];
@@ -218,7 +218,7 @@ async function loadMaster() {
 
   const fgStock = (fgRes.data||[])
     .filter(l=>l.fg_stock?.qty_on_hand>0)
-    .map(l=>({ type:'fg', id:l.id, lot_number:l.lot_number, name:l.products?.name||'-', sku:l.products?.sku||'-', unit:l.unit, qty_on_hand:l.fg_stock.qty_on_hand, exp_date:l.exp_date||null }));
+    .map(l=>({ type:'fg', id:l.id, lot_number:l.lot_number, name:l.products?.name||'-', sku:l.products?.sku||'-', unit:l.unit, qty_on_hand:l.fg_stock.qty_on_hand, exp_date:l.exp_date||null, po_id:l.po_id||null, produced_date:l.produced_date||null }));
 
   allStock = [...rmStock, ...fgStock];
   renderStockList('');
@@ -274,7 +274,7 @@ function renderStockList(q) {
         <span style="font-size:11.5px;color:var(--ink-soft);margin-left:4px;">(${l.sku})</span><br>
         <span style="font-size:12px;color:var(--green-deep);margin-top:2px;display:inline-block;">สต็อก: ${fmtQty(l.qty_on_hand)} ${l.unit}</span>
         ${l.grade?`<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">เกรด ${l.grade}</span>`:''}
-        ${l.is_processed?`<span style="font-size:11px;background:var(--green-soft);color:var(--green-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">✂️ รีแพ็ค ${l.receive_date?fmtDate(l.receive_date):''}</span>`:''}
+        ${l.type==='rm' ? lotOriginBadgeRM(l) : lotOriginBadgeFG(l)}
         ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:8px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
         ${inCart?`<span style="font-size:11px;color:var(--green-deep);font-weight:700;margin-left:8px;">✓ อยู่ในรายการ</span>`:''}
       </div>

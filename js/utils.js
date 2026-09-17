@@ -31,6 +31,19 @@ function qtyExceeds(requested, available, eps = 1e-6) {
   return Number(requested) > Number(available) + eps;
 }
 
+// ป้ายบอกที่มาของ RM lot: รับเข้าตรง หรือผ่านการคัด/รีแพ็คมา (ใช้ตอนเลือก lot ไปผลิต/คัด/จ่าย)
+function lotOriginBadgeRM(l) {
+  return l.is_processed
+    ? `<span style="font-size:11px;background:var(--green-soft);color:var(--green-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">✂️ คัด/รีแพ็ค ${fmtDate(l.receive_date)}</span>`
+    : `<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">📥 รับเข้า ${fmtDate(l.receive_date)}</span>`;
+}
+// ป้ายบอกที่มาของ FG lot: ผลิตเอง หรือซื้อสำเร็จรูปมาโดยตรง
+function lotOriginBadgeFG(l) {
+  return l.po_id
+    ? `<span style="font-size:11px;background:#DBEAFE;color:#1E40AF;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">🏭 ผลิต ${fmtDate(l.produced_date)}</span>`
+    : `<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">📥 รับเข้า ${fmtDate(l.produced_date)}</span>`;
+}
+
 function toLocalInput(d = new Date()) {
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
