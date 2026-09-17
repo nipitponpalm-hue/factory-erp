@@ -369,9 +369,6 @@
 // ===== ช่วงเวลาผลิต (เที่ยงคืน / เที่ยงวัน) =====
 const SHIFT_START = { midnight:'00:00:00', noon:'12:00:00' };
 const SHIFT_LABEL = { midnight:'เที่ยงคืน', noon:'เที่ยงวัน' };
-function guessCurrentShift() {
-  return new Date().getHours() < 12 ? 'midnight' : 'noon';
-}
 window.selectShift = function(val) {
   document.getElementById('prodShift').value = val;
   document.querySelectorAll('#shiftToggle .shift-btn').forEach(b=>b.classList.toggle('active', b.dataset.shift===val));
@@ -683,7 +680,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('oprInput').value='';
     document.getElementById('poNote').value='';
     document.getElementById('prodDate').value=toDateInput();
-    selectShift(guessCurrentShift());
+    selectShift('midnight');
     document.getElementById('prodInput').value='';
     document.getElementById('prodId').value='';
     document.getElementById('fgUnitDisplay').value='';
@@ -906,7 +903,7 @@ document.getElementById('cancelOrderConfirmBtn').addEventListener('click', async
 (async function init(){
   showLoading(true);
   document.getElementById('prodDate').value=toDateInput();
-  selectShift(guessCurrentShift());
+  selectShift('midnight');
   syncMfgDate();
   await loadMaster();
   await loadRecentPO();
