@@ -274,7 +274,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function loadAll() {
   const [lotsRes, txnRes, fgRes] = await Promise.all([
     db.from('rm_lots')
-      .select('id, lot_number, receive_date, exp_date, initial_qty, unit, status, supplier_lot, material_id, materials(id,sku,name,category,min_stock), suppliers(name), rm_stock(qty_on_hand)')
+      .select('id, lot_number, receive_date, exp_date, initial_qty, unit, status, supplier_lot, material_id, is_processed, grade, materials(id,sku,name,category,min_stock), suppliers(name), rm_stock(qty_on_hand)')
       .order('receive_date', { ascending: true })
       .order('lot_number', { ascending: true }),
     db.from('rm_transactions')
@@ -440,6 +440,7 @@ async function showLotDetail(lotId) {
     .order('created_at');
 
   document.getElementById('lotModalBody').innerHTML = `
+    ${lot.is_processed ? `<div style="background:var(--green-soft);color:var(--green-deep);border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px;">✂️ Lot นี้ผ่านการคัด/รีแพ็ค เมื่อ ${fmtDate(lot.receive_date)}${lot.grade?` — เกรด ${lot.grade}`:''}</div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
       <div class="stat-box"><div class="lbl">รับเข้า</div><div class="val" style="font-size:18px;">${fmtQty(lot.initial_qty)} ${lot.unit}</div></div>
       <div class="stat-box"><div class="lbl">คงเหลือ</div><div class="val" style="font-size:18px;">${fmtQty(lot.rm_stock?.qty_on_hand||0)} ${lot.unit}</div></div>
