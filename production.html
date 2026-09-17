@@ -15,6 +15,9 @@
 <style>
 .tab-btn { padding:8px 20px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--ink-soft); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:.15s; }
 .tab-btn.active { background:var(--green-deep); color:#fff; border-color:var(--green-deep); }
+.shift-toggle { display:flex; gap:6px; }
+.shift-btn { flex:1; padding:8px 10px; border:1.5px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink-soft); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:.15s; white-space:nowrap; }
+.shift-btn.active { background:var(--green-deep); color:#fff; border-color:var(--green-deep); }
 .badge-type { display:inline-block;font-size:10px;font-weight:800;padding:1px 5px;border-radius:4px;vertical-align:middle;margin-right:2px; }
 .badge-type.material { background:#E0F2E9;color:#0F5132; }
 .badge-type.product  { background:#FEF3C7;color:#92400E; }
@@ -75,8 +78,17 @@
         </div>
       </div>
       <div class="field">
-        <label>วันเวลาผลิต</label>
-        <input type="datetime-local" id="prodDate">
+        <label>วันที่ผลิต</label>
+        <input type="date" id="prodDate">
+      </div>
+      <div class="field">
+        <label>กะ *</label>
+        <div class="shift-toggle" id="shiftToggle">
+          <button type="button" class="shift-btn" data-shift="morning" onclick="selectShift('morning')">กะเช้า</button>
+          <button type="button" class="shift-btn" data-shift="afternoon" onclick="selectShift('afternoon')">กะบ่าย</button>
+          <button type="button" class="shift-btn" data-shift="night" onclick="selectShift('night')">กะดึก</button>
+        </div>
+        <input type="hidden" id="prodShift">
       </div>
       <div class="field-lg">
         <label>หมายเหตุ</label>
@@ -182,7 +194,7 @@
     <div class="card-title">ใบผลิตล่าสุด</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>เลขที่ใบผลิต</th><th>วันเวลา</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวนผลิต</th><th>สถานะ</th><th></th></tr></thead>
+        <thead><tr><th>เลขที่ใบผลิต</th><th>วันที่ / กะ</th><th>ผู้ผลิต</th><th>FG Lot</th><th>สินค้า</th><th style="text-align:right;">จำนวนผลิต</th><th>สถานะ</th><th></th></tr></thead>
         <tbody id="poBody"></tbody>
       </table>
     </div>
@@ -354,6 +366,21 @@
 <script src="js/lot.js"></script>
 <script>
 (function(){
+
+// ===== SHIFT (กะ) =====
+const SHIFT_START = { morning:'08:00:00', afternoon:'16:00:00', night:'00:00:00' };
+const SHIFT_LABEL = { morning:'กะเช้า', afternoon:'กะบ่าย', night:'กะดึก' };
+function guessCurrentShift() {
+  const h = new Date().getHours();
+  if (h < 8) return 'night';
+  if (h < 16) return 'morning';
+  return 'afternoon';
+}
+window.selectShift = function(val) {
+  document.getElementById('prodShift').value = val;
+  document.querySelectorAll('#shiftToggle .shift-btn').forEach(b=>b.classList.toggle('active', b.dataset.shift===val));
+  checkConfirm();
+};
 
 let operators=[], materials=[], products=[], inputItems=[];
 let rmInputs = [];     // { lot_id, item_type, lot_number, material_name, material_sku, unit, qty_used, qty_on_hand, exp_date }
@@ -551,6 +578,8 @@ function calcYield() {
 // ===== CHECK CONFIRM =====
 function checkConfirm() {
   const ok = document.getElementById('oprInput').value.trim()
+    && document.getElementById('prodDate').value
+    && document.getElementById('prodShift').value
     && rmInputs.length > 0
     && rmInputs.every(r=>r.qty_used>0)
     && prodSelected
@@ -561,11 +590,13 @@ function checkConfirm() {
 ['qtyProduced','expDate'].forEach(id=>{
   document.getElementById(id).addEventListener('input', ()=>{ calcYield(); checkConfirm(); });
 });
+document.getElementById('prodDate').addEventListener('change', checkConfirm);
 
 // ===== CONFIRM =====
 document.getElementById('confirmBtn').addEventListener('click', async () => {
   const operator   = document.getElementById('oprInput').value.trim();
   const prodDateV  = document.getElementById('prodDate').value;
+  const shiftVal   = document.getElementById('prodShift').value;
   const poNote     = document.getElementById('poNote').value.trim()||null;
   const qtyProd    = parseFloat(document.getElementById('qtyProduced').value);
   const mfgDate    = document.getElementById('mfgDate').value || new Date().toISOString().slice(0,10);
@@ -576,11 +607,11 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
   showLoading(true);
   try {
     const poNumber = await generateLotNumber('PD');
-    const prodAt   = prodDateV ? new Date(prodDateV).toISOString() : new Date().toISOString();
+    const prodAt   = new Date(`${prodDateV||toDateInput()}T${SHIFT_START[shiftVal]||'08:00:00'}`).toISOString();
 
     // 1. สร้าง production_order
     const { data:po, error:poErr } = await db.from('production_orders')
-      .insert({ po_number:poNumber, operator, started_at:prodAt, completed_at:prodAt, note:poNote, status:'completed' })
+      .insert({ po_number:poNumber, operator, started_at:prodAt, completed_at:prodAt, shift:shiftVal, note:poNote, status:'completed' })
       .select('id').single();
     if (poErr) throw poErr;
 
@@ -648,7 +679,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     rmInputs=[]; renderRmTable();
     document.getElementById('oprInput').value='';
     document.getElementById('poNote').value='';
-    document.getElementById('prodDate').value=toLocalInput();
+    document.getElementById('prodDate').value=toDateInput();
+    selectShift(guessCurrentShift());
     document.getElementById('prodInput').value='';
     document.getElementById('prodId').value='';
     document.getElementById('fgUnitDisplay').value='';
@@ -686,7 +718,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 // ===== RECENT PO =====
 async function loadRecentPO() {
   const { data } = await db.from('production_orders')
-    .select('id,po_number,completed_at,operator,status,fg_lots(id,lot_number,products(name,sku),initial_qty,unit)')
+    .select('id,po_number,completed_at,operator,status,shift,fg_lots(id,lot_number,products(name,sku),initial_qty,unit)')
     .order('created_at',{ascending:false}).limit(20);
 
   const body=document.getElementById('poBody');
@@ -713,7 +745,7 @@ async function loadRecentPO() {
     const rowStyle = isCancelled ? 'opacity:.55;' : '';
     return `<tr style="${rowStyle}">
       <td><span class="lot-num">${r.po_number}</span></td>
-      <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDT(r.completed_at)}</td>
+      <td style="font-size:12.5px;color:var(--ink-soft);">${fmtDate(r.completed_at)}${r.shift?` · ${SHIFT_LABEL[r.shift]||r.shift}`:''}</td>
       <td>${r.operator}</td>
       <td>${fg?`<span class="lot-num">${fg.lot_number}</span>`:'-'}</td>
       <td>${fg?.products?`${fg.products.name}`:'-'}</td>
@@ -868,7 +900,8 @@ document.getElementById('cancelOrderConfirmBtn').addEventListener('click', async
 // ===== INIT =====
 (async function init(){
   showLoading(true);
-  document.getElementById('prodDate').value=toLocalInput();
+  document.getElementById('prodDate').value=toDateInput();
+  selectShift(guessCurrentShift());
   await loadMaster();
   await loadRecentPO();
   showLoading(false);
