@@ -82,11 +82,10 @@
         <input type="date" id="prodDate">
       </div>
       <div class="field">
-        <label>กะ *</label>
+        <label>ช่วงเวลา *</label>
         <div class="shift-toggle" id="shiftToggle">
-          <button type="button" class="shift-btn" data-shift="morning" onclick="selectShift('morning')">กะเช้า</button>
-          <button type="button" class="shift-btn" data-shift="afternoon" onclick="selectShift('afternoon')">กะบ่าย</button>
-          <button type="button" class="shift-btn" data-shift="night" onclick="selectShift('night')">กะดึก</button>
+          <button type="button" class="shift-btn" data-shift="midnight" onclick="selectShift('midnight')">เที่ยงคืน</button>
+          <button type="button" class="shift-btn" data-shift="noon" onclick="selectShift('noon')">เที่ยงวัน</button>
         </div>
         <input type="hidden" id="prodShift">
       </div>
@@ -367,14 +366,11 @@
 <script>
 (function(){
 
-// ===== SHIFT (กะ) =====
-const SHIFT_START = { morning:'08:00:00', afternoon:'16:00:00', night:'00:00:00' };
-const SHIFT_LABEL = { morning:'กะเช้า', afternoon:'กะบ่าย', night:'กะดึก' };
+// ===== ช่วงเวลาผลิต (เที่ยงคืน / เที่ยงวัน) =====
+const SHIFT_START = { midnight:'00:00:00', noon:'12:00:00' };
+const SHIFT_LABEL = { midnight:'เที่ยงคืน', noon:'เที่ยงวัน' };
 function guessCurrentShift() {
-  const h = new Date().getHours();
-  if (h < 8) return 'night';
-  if (h < 16) return 'morning';
-  return 'afternoon';
+  return new Date().getHours() < 12 ? 'midnight' : 'noon';
 }
 window.selectShift = function(val) {
   document.getElementById('prodShift').value = val;
