@@ -408,11 +408,11 @@ async function loadMaster() {
     db.from('materials').select('id,sku,name,unit').eq('is_active',true).order('sku'),
     db.from('products').select('id,sku,name,unit').eq('is_active',true).order('sku'),
     db.from('rm_lots')
-      .select('id,lot_number,material_id,receive_date,exp_date,unit,status,rm_stock(qty_on_hand),materials(sku,name)')
+      .select('id,lot_number,material_id,receive_date,exp_date,unit,status,is_processed,rm_stock(qty_on_hand),materials(sku,name)')
       .in('status',['available','depleted'])
       .order('receive_date', {ascending:true}),
     db.from('fg_lots')
-      .select('id,lot_number,product_id,produced_date,exp_date,unit,status,fg_stock(qty_on_hand),products(sku,name)')
+      .select('id,lot_number,product_id,produced_date,exp_date,unit,status,po_id,fg_stock(qty_on_hand),products(sku,name)')
       .in('status',['available','depleted'])
       .order('produced_date', {ascending:true}),
   ]);
@@ -476,6 +476,18 @@ setupCombo({
   }
 });
 
+// ===== ป้ายบอกที่มาของ Lot (รับเข้าตรง / ผ่านการผลิต / ผ่านการคัด) =====
+function originBadgeRM(l) {
+  return l.is_processed
+    ? `<span style="font-size:11px;background:var(--green-soft);color:var(--green-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">✂️ คัด/รีแพ็ค ${fmtDate(l.receive_date)}</span>`
+    : `<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">📥 รับเข้า ${fmtDate(l.receive_date)}</span>`;
+}
+function originBadgeFG(l) {
+  return l.po_id
+    ? `<span style="font-size:11px;background:#DBEAFE;color:#1E40AF;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">🏭 ผลิต ${fmtDate(l.produced_date)}</span>`
+    : `<span style="font-size:11px;background:#EDE9DD;color:var(--ink-deep);border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">📥 รับเข้า ${fmtDate(l.produced_date)}</span>`;
+}
+
 // ===== LOT SELECTOR =====
 function renderLotSelector(mat) {
   const isFg = mat.item_type === 'product';
@@ -498,6 +510,7 @@ function renderLotSelector(mat) {
       <div style="flex:1;">
         <span class="lot-num">${l.lot_number}</span>
         <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(qtyOnHand)} ${mat.unit}</span>
+        ${isFg ? originBadgeFG(l) : originBadgeRM(l)}
         ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:6px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
@@ -981,6 +994,7 @@ window.switchTab = function(tab) {
         <div style="flex:1;">
           <span class="lot-num">${l.lot_number}</span>
           <span style="font-size:11.5px;color:var(--ink-soft);margin-left:8px;">คงเหลือ ${fmtQty(l.rm_stock?.qty_on_hand||0)} ${mat.unit}</span>
+          ${originBadgeRM(l)}
           ${l.exp_date?`<span style="font-size:11px;color:var(--amber);margin-left:6px;">EXP ${fmtDate(l.exp_date)}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
