@@ -378,6 +378,13 @@ window.selectShift = function(val) {
   checkConfirm();
 };
 
+// วันผลิต (MFG) ให้ตามวันที่ผลิตด้านบนโดยอัตโนมัติ จนกว่าผู้ใช้จะแก้เอง
+let mfgDateTouched = false;
+function syncMfgDate() {
+  if (!mfgDateTouched) document.getElementById('mfgDate').value = document.getElementById('prodDate').value;
+}
+document.getElementById('mfgDate').addEventListener('input', () => { mfgDateTouched = true; });
+
 let operators=[], materials=[], products=[], inputItems=[];
 let rmInputs = [];     // { lot_id, item_type, lot_number, material_name, material_sku, unit, qty_used, qty_on_hand, exp_date }
 let prodSelected = null;
@@ -586,7 +593,7 @@ function checkConfirm() {
 ['qtyProduced','expDate'].forEach(id=>{
   document.getElementById(id).addEventListener('input', ()=>{ calcYield(); checkConfirm(); });
 });
-document.getElementById('prodDate').addEventListener('change', checkConfirm);
+document.getElementById('prodDate').addEventListener('change', () => { syncMfgDate(); checkConfirm(); });
 
 // ===== CONFIRM =====
 document.getElementById('confirmBtn').addEventListener('click', async () => {
@@ -681,7 +688,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
     document.getElementById('prodId').value='';
     document.getElementById('fgUnitDisplay').value='';
     document.getElementById('qtyProduced').value='';
-    document.getElementById('mfgDate').value='';
+    mfgDateTouched = false;
+    syncMfgDate();
     document.getElementById('expDate').value='';
     document.getElementById('fgNote').value='';
     prodSelected=null;
@@ -703,7 +711,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   document.getElementById('prodId').value='';
   document.getElementById('fgUnitDisplay').value='';
   document.getElementById('qtyProduced').value='';
-  document.getElementById('mfgDate').value='';
+  mfgDateTouched = false;
+  syncMfgDate();
   document.getElementById('expDate').value='';
   document.getElementById('fgNote').value='';
   document.getElementById('poNote').value='';
@@ -898,6 +907,7 @@ document.getElementById('cancelOrderConfirmBtn').addEventListener('click', async
   showLoading(true);
   document.getElementById('prodDate').value=toDateInput();
   selectShift(guessCurrentShift());
+  syncMfgDate();
   await loadMaster();
   await loadRecentPO();
   showLoading(false);
