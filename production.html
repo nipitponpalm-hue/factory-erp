@@ -694,7 +694,6 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
 
     showToast(`✅ บันทึกการผลิตสำเร็จ — PO: ${poNumber} | FG Lot: ${fgLotNumber}`);
     rmInputs=[]; renderRmTable();
-    document.getElementById('oprInput').value='';
     document.getElementById('poNote').value='';
     document.getElementById('prodDate').value=toDateInput();
     selectShift('midnight');
@@ -1200,7 +1199,6 @@ window.switchTab = function(tab) {
       rpOutputs=[{ grade:'', qty:'' }];
       rpRenderOutputRows();
       rpCalcLoss();
-      document.getElementById('rpOprInput').value='';
       document.getElementById('rpDate').value=toDateInput();
       document.getElementById('rpNote').value='';
       document.getElementById('rpUnitDisplay').value='';
